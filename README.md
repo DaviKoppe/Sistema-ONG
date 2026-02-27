@@ -5,8 +5,6 @@ O sistema contará com controle de acesso, onde apenas o administrador poderá c
 
 Tecnologias Utilizadas
 Python
-FastAPI
-PostgreSQL
-React
-SQLAlchemy
+Django
+
 Banco escolhido: PostgreSQL
