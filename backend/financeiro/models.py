@@ -35,6 +35,9 @@ class Transacao (models.Model):
         null=True
     )
 
+    def __str__(self):
+        return f"{self.tipo} - {self.valor}"
+
     class Meta:
         verbose_name = "Transação"
         verbose_name_plural = "Transações"
