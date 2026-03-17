@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -13,6 +14,7 @@ class Categoria(models.Model):
         verbose_name_plural = "Categorias"
 
 class Transacao (models.Model):
+    usuario = models.ForeignKey(User,on_delete=models.CASCADE)
     TIPO_CHOICES = [
         ('entrada', 'Entrada'),
         ('saída', 'Saída'),
@@ -39,3 +41,12 @@ class Transacao (models.Model):
         verbose_name = "Transação"
         verbose_name_plural = "Transações"
 
+    def __str__(self):
+        return f"{self.tipo} - R$ {self.valor} - {self.categoria}"
+
+usuario = models.ForeignKey(
+    User,
+    on_delete=models.CASCADE,
+    null=True,
+    blank=True
+)
