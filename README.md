@@ -6,5 +6,6 @@ O sistema contará com controle de acesso, onde apenas o administrador poderá c
 Tecnologias Utilizadas
 Python
 Django
+Docker para versionamento do codigo
 
 Banco escolhido: PostgreSQL
