@@ -21,10 +21,11 @@ class Transacao (models.Model):
         ('transferencia', 'Transferência'),
     ]
 
+    descricao = models.CharField(max_length=255)
     valor = models.DecimalField(max_digits=10, decimal_places=2)
     data = models.DateField()
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
-    descricao = models.TextField(blank=True)
+   
 
     categoria = models.ForeignKey(
         Categoria,
@@ -44,9 +45,3 @@ class Transacao (models.Model):
     def __str__(self):
         return f"{self.tipo} - R$ {self.valor} - {self.categoria}"
 
-usuario = models.ForeignKey(
-    User,
-    on_delete=models.CASCADE,
-    null=True,
-    blank=True
-)
