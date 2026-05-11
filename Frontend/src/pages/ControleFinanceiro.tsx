@@ -1,8 +1,19 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Trash2, Pencil } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJson } from "@/lib/api";
@@ -11,27 +22,38 @@ interface Transacao {
   id: string;
   descricao: string;
   valor: number;
-  tipo: "entrada" | "saida";
+  tipo: "entrada" | "saida" | "transferencia";
   data: string;
   categoria: string;
+  comprovanteUrl?: string | null;
 }
 
-const mockTransacoes: Transacao[] = [
-  { id: "1", descricao: "Doação recebida", valor: 1500, tipo: "entrada", data: "2026-04-01", categoria: "Doações" },
-  { id: "2", descricao: "Compra de materiais", valor: 350, tipo: "saida", data: "2026-04-05", categoria: "Materiais" },
-  { id: "3", descricao: "Contribuição mensal", valor: 800, tipo: "entrada", data: "2026-04-10", categoria: "Doações" },
-];
+function toApiTipo(tipo: Transacao["tipo"]): "entrada" | "saída" | "transferencia" {
+  if (tipo === "saida") return "saída";
+  if (tipo === "transferencia") return "transferencia";
+  return "entrada";
+}
 
 const ControleFinanceiro = () => {
-  const [transacoesLocais, setTransacoesLocais] = useState<Transacao[]>(mockTransacoes);
   const [descricao, setDescricao] = useState("");
   const [valor, setValor] = useState("");
   const [tipo, setTipo] = useState<string>("");
   const [data, setData] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [comprovante, setComprovante] = useState<File | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDescricao, setEditDescricao] = useState("");
+  const [editValor, setEditValor] = useState("");
+  const [editTipo, setEditTipo] = useState<Transacao["tipo"]>("entrada");
+  const [editData, setEditData] = useState("");
+  const [editCategoria, setEditCategoria] = useState("");
+  const [editComprovante, setEditComprovante] = useState<File | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: transacoesApi } = useQuery({
+  const { data: transacoesApi, isLoading, isError, error } = useQuery({
     queryKey: ["transacoes"],
     queryFn: async () => {
       const data = await apiJson<{ ok: boolean; results: any[] }>("/api/financeiro/transacoes/");
@@ -39,9 +61,15 @@ const ControleFinanceiro = () => {
         id: String(t.id),
         descricao: String(t.descricao ?? ""),
         valor: Number(t.valor),
-        tipo: t.tipo === "saída" ? "saida" : (t.tipo as "entrada" | "saida"),
+        tipo:
+          t.tipo === "saída"
+            ? "saida"
+            : t.tipo === "transferencia"
+              ? "transferencia"
+              : ("entrada" as const),
         data: String(t.data),
         categoria: String(t.categoria?.nome ?? "Geral"),
+        comprovanteUrl: (t.comprovante_url ?? null) as string | null,
       })) as Transacao[];
     },
     retry: false,
@@ -49,12 +77,34 @@ const ControleFinanceiro = () => {
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (comprovante) {
+        const fd = new FormData();
+        fd.append("descricao", descricao);
+        fd.append("valor", String(Number(valor)));
+        fd.append("tipo", toApiTipo(tipo as Transacao["tipo"]));
+        fd.append("data", data);
+        fd.append("categoria", categoria || "Geral");
+        fd.append("comprovante", comprovante);
+
+        const res = await fetch("/api/financeiro/transacoes/", { method: "POST", body: fd });
+        const text = await res.text();
+        const dataJson = text ? (JSON.parse(text) as unknown) : null;
+        if (!res.ok) {
+          const message =
+            typeof (dataJson as any)?.error === "string"
+              ? (dataJson as any).error
+              : `Erro HTTP ${res.status}`;
+          throw new Error(message);
+        }
+        return dataJson as any;
+      }
+
       return await apiJson("/api/financeiro/transacoes/", {
         method: "POST",
         body: JSON.stringify({
           descricao,
           valor: Number(valor),
-          tipo: tipo === "saida" ? "saída" : tipo,
+          tipo: toApiTipo(tipo as Transacao["tipo"]),
           data,
           categoria: categoria || "Geral",
         }),
@@ -62,6 +112,41 @@ const ControleFinanceiro = () => {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+      setComprovante(null);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error("Transação inválida para edição.");
+      const fd = new FormData();
+      fd.append("descricao", editDescricao);
+      fd.append("valor", String(Number(editValor)));
+      fd.append("tipo", toApiTipo(editTipo));
+      fd.append("data", editData);
+      fd.append("categoria", editCategoria || "Geral");
+      if (editComprovante) fd.append("comprovante", editComprovante);
+
+      const res = await fetch(`/api/financeiro/transacoes/${editingId}/update/`, {
+        method: "POST",
+        body: fd,
+      });
+      const text = await res.text();
+      const data = text ? (JSON.parse(text) as unknown) : null;
+      if (!res.ok) {
+        const message =
+          typeof (data as any)?.error === "string"
+            ? (data as any).error
+            : `Erro HTTP ${res.status}`;
+        throw new Error(message);
+      }
+      return data as any;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+      setEditOpen(false);
+      setEditingId(null);
+      setEditComprovante(null);
     },
   });
 
@@ -74,10 +159,7 @@ const ControleFinanceiro = () => {
     },
   });
 
-  const transacoes = useMemo(
-    () => (transacoesApi && transacoesApi.length > 0 ? transacoesApi : transacoesLocais),
-    [transacoesApi, transacoesLocais],
-  );
+  const transacoes = transacoesApi ?? [];
 
   const totalEntradas = transacoes.filter((t) => t.tipo === "entrada").reduce((acc, t) => acc + t.valor, 0);
   const totalSaidas = transacoes.filter((t) => t.tipo === "saida").reduce((acc, t) => acc + t.valor, 0);
@@ -86,31 +168,33 @@ const ControleFinanceiro = () => {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!descricao || !valor || !tipo || !data) return;
-    try {
-      await createMutation.mutateAsync();
-    } catch {
-      // fallback local se não estiver logado / backend indisponível
-      const nova: Transacao = {
-        id: Date.now().toString(),
-        descricao,
-        valor: parseFloat(valor),
-        tipo: tipo as "entrada" | "saida",
-        data,
-        categoria: categoria || "Geral",
-      };
-      setTransacoesLocais([nova, ...transacoesLocais]);
-    }
+    await createMutation.mutateAsync();
     setDescricao("");
     setValor("");
     setTipo("");
     setData("");
     setCategoria("");
+    setComprovante(null);
   };
 
   const handleDelete = (id: string) => {
-    deleteMutation.mutate(id, {
-      onError: () => setTransacoesLocais(transacoesLocais.filter((t) => t.id !== id)),
-    });
+    deleteMutation.mutate(id);
+  };
+
+  const handleAskDelete = (id: string) => {
+    setDeletingId(id);
+    setDeleteOpen(true);
+  };
+
+  const handleOpenEdit = (t: Transacao) => {
+    setEditingId(t.id);
+    setEditDescricao(t.descricao);
+    setEditValor(String(t.valor));
+    setEditTipo(t.tipo);
+    setEditData(t.data);
+    setEditCategoria(t.categoria);
+    setEditComprovante(null);
+    setEditOpen(true);
   };
 
   const formatCurrency = (v: number) =>
@@ -140,6 +224,13 @@ const ControleFinanceiro = () => {
         {/* Add transaction form */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-bold text-foreground mb-4">Transações</h2>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground mb-4">Carregando transações…</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive mb-4">
+              {(error as Error)?.message || "Erro ao carregar transações."}
+            </p>
+          ) : null}
           <form onSubmit={handleAdd} className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
             <Input placeholder="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} required />
             <Input placeholder="Valor" type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} required />
@@ -148,10 +239,19 @@ const ControleFinanceiro = () => {
               <SelectContent>
                 <SelectItem value="entrada">Entrada</SelectItem>
                 <SelectItem value="saida">Saída</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
               </SelectContent>
             </Select>
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
             <Input placeholder="Categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} />
+            <div className="col-span-2 md:col-span-5">
+              <p className="text-sm font-medium mb-2">Comprovante</p>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setComprovante(e.target.files?.[0] ?? null)}
+              />
+            </div>
           </form>
           <div className="flex justify-end mb-6">
             <Button type="submit" onClick={handleAdd}>Salvar</Button>
@@ -170,21 +270,40 @@ const ControleFinanceiro = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {transacoes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
+                    Nenhuma transação cadastrada.
+                  </TableCell>
+                </TableRow>
+              ) : null}
               {transacoes.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>{t.descricao}</TableCell>
                   <TableCell className={t.tipo === "entrada" ? "text-success font-semibold" : "text-destructive font-semibold"}>
                     {t.tipo === "entrada" ? "+" : "-"} {formatCurrency(t.valor)}
                   </TableCell>
-                  <TableCell className="capitalize">{t.tipo === "saida" ? "Saída" : "Entrada"}</TableCell>
+                  <TableCell className="capitalize">
+                    {t.tipo === "saida" ? "Saída" : t.tipo === "transferencia" ? "Transferência" : "Entrada"}
+                  </TableCell>
                   <TableCell>{new Date(t.data).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell>{t.categoria}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      {t.comprovanteUrl ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => window.open(t.comprovanteUrl ?? "", "_blank", "noopener,noreferrer")}
+                        >
+                          Ver comprovante
+                        </Button>
+                      ) : null}
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEdit(t)}>
                         <Pencil className="w-4 h-4 text-muted-foreground" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(t.id)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAskDelete(t.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
@@ -195,6 +314,110 @@ const ControleFinanceiro = () => {
           </Table>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar transação</DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 gap-3">
+            <Input placeholder="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} />
+            <Input
+              placeholder="Valor"
+              type="number"
+              step="0.01"
+              value={editValor}
+              onChange={(e) => setEditValor(e.target.value)}
+            />
+            <Select value={editTipo} onValueChange={(v) => setEditTipo(v as Transacao["tipo"])}>
+              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrada">Entrada</SelectItem>
+                <SelectItem value="saida">Saída</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} />
+            <Input placeholder="Categoria" value={editCategoria} onChange={(e) => setEditCategoria(e.target.value)} />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Comprovante</p>
+              {transacoes.find((t) => t.id === editingId)?.comprovanteUrl ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    const url = transacoes.find((t) => t.id === editingId)?.comprovanteUrl ?? "";
+                    if (url) window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  Ver comprovante atual
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum comprovante anexado.</p>
+              )}
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setEditComprovante(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Se selecionar um arquivo, ele será enviado ao salvar.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEditOpen(false);
+                setEditingId(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                await updateMutation.mutateAsync();
+              }}
+              disabled={updateMutation.isPending}
+            >
+              Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(v) => {
+          setDeleteOpen(v);
+          if (!v) setDeletingId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deseja mesmo excluir a transação?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              onClick={() => {
+                if (deletingId) handleDelete(deletingId);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
