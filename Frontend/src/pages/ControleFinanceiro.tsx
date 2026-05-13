@@ -14,9 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Plus, Tag, X, Check } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJson } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 interface Transacao {
   id: string;
@@ -35,22 +36,27 @@ function toApiTipo(tipo: Transacao["tipo"]): "entrada" | "saída" | "transferenc
 }
 
 const ControleFinanceiro = () => {
-  const [descricao, setDescricao] = useState("");
-  const [valor, setValor] = useState("");
-  const [tipo, setTipo] = useState<string>("");
-  const [data, setData] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [comprovante, setComprovante] = useState<File | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDescricao, setEditDescricao] = useState("");
-  const [editValor, setEditValor] = useState("");
-  const [editTipo, setEditTipo] = useState<Transacao["tipo"]>("entrada");
-  const [editData, setEditData] = useState("");
-  const [editCategoria, setEditCategoria] = useState("");
-  const [editComprovante, setEditComprovante] = useState<File | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [descricao, setDescricao]                   = useState("");
+  const [valor, setValor]                           = useState("");
+  const [tipo, setTipo]                             = useState<string>("");
+  const [data, setData]                             = useState("");
+  const [categoria, setCategoria]                   = useState("");
+  const [comprovante, setComprovante]               = useState<File | null>(null);
+  const [editOpen, setEditOpen]                     = useState(false);
+  const [editingId, setEditingId]                   = useState<string | null>(null);
+  const [editDescricao, setEditDescricao]           = useState("");
+  const [editValor, setEditValor]                   = useState("");
+  const [editTipo, setEditTipo]                     = useState<Transacao["tipo"]>("entrada");
+  const [editData, setEditData]                     = useState("");
+  const [editCategoria, setEditCategoria]           = useState("");
+  const [editComprovante, setEditComprovante]       = useState<File | null>(null);
+  const [deleteOpen, setDeleteOpen]                 = useState(false);
+  const [deletingId, setDeletingId]                 = useState<string | null>(null);
+  const [novaCategoria, setNovaCategoria]           = useState("");
+  const [categorias, setCategorias]                 = useState<string[]>(["Geral"]);
+  const [selectedCategorias, setSelectedCategorias] = useState<string[]>([]);
+  const [editingCategoria, setEditingCategoria]     = useState<string | null>(null);
+  
   const queryClient = useQueryClient();
 
   const { data: transacoesApi, isLoading, isError, error } = useQuery({
@@ -197,6 +203,60 @@ const ControleFinanceiro = () => {
     setEditOpen(true);
   };
 
+  const handleAddCategoria = () => {
+    const nome = novaCategoria.trim();
+    if (!nome) return;
+    if (editingCategoria !== null) {
+      if (nome !== editingCategoria && categorias.includes(nome)) return;
+      setCategorias((prev) => prev.map((c) => (c === editingCategoria ? nome : c)));
+      if (categoria === editingCategoria) setCategoria(nome);
+      if (editCategoria === editingCategoria) setEditCategoria(nome);
+      setEditingCategoria(null);
+      setSelectedCategorias([]);
+      setNovaCategoria("");
+    } else {
+      if (!categorias.includes(nome)) {
+        setCategorias((prev) => [...prev, nome]);
+        setNovaCategoria("");
+      }
+    }
+  };
+
+  const handleToggleCategoria = (cat: string) => {
+    if (editingCategoria !== null) return;
+    setSelectedCategorias((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const handleEditSelected = () => {
+    if (selectedCategorias.length !== 1) return;
+    setEditingCategoria(selectedCategorias[0]);
+    setNovaCategoria(selectedCategorias[0]);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCategoria(null);
+    setNovaCategoria("");
+    setSelectedCategorias([]);
+  };
+
+  const handleDeleteSelected = () => {
+    const toDelete = new Set(selectedCategorias);
+    setCategorias((prev) => prev.filter((c) => !toDelete.has(c)));
+    if (toDelete.has(categoria)) setCategoria("");
+    if (toDelete.has(editCategoria)) setEditCategoria("");
+    setSelectedCategorias([]);
+  };
+
+  const handleDeleteOne = (cat: string) => {
+    setCategorias((prev) => prev.filter((c) => c !== cat));
+    setSelectedCategorias((prev) => prev.filter((c) => c !== cat));
+    if (categoria === cat) setCategoria("");
+    if (editCategoria === cat) setEditCategoria("");
+    if (editingCategoria === cat) handleCancelEdit();
+  };
+
   const formatCurrency = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -221,6 +281,115 @@ const ControleFinanceiro = () => {
           </div>
         </div>
 
+        {/* Categorias */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <h2 className="text-lg font-bold text-foreground mb-5">Categorias</h2>
+
+          {/* Toolbar unificada: input + ações na mesma linha */}
+          <div className="flex items-center gap-2 mb-5">
+            <Input
+              placeholder={editingCategoria ? `Editando "${editingCategoria}"…` : "Nova categoria..."}
+              value={novaCategoria}
+              onChange={(e) => setNovaCategoria(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategoria(); } }}
+              className="w-52 shrink-0"
+            />
+            {editingCategoria ? (
+              <>
+                <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim()}>
+                  <Check className="w-3.5 h-3.5" /> Salvar
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={handleCancelEdit}>
+                  Cancelar
+                </Button>
+              </>
+            ) : (
+              <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim()}>
+                <Plus className="w-3.5 h-3.5" /> Adicionar
+              </Button>
+            )}
+
+            <div className="h-5 w-px bg-border mx-1 shrink-0" />
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleEditSelected}
+              disabled={selectedCategorias.length !== 1 || editingCategoria !== null}
+            >
+              <Pencil className="w-3.5 h-3.5" /> Editar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={selectedCategorias.length === 0 || editingCategoria !== null}
+              className={cn(
+                selectedCategorias.length > 0 && editingCategoria === null
+                  ? "text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                  : ""
+              )}
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
+            </Button>
+          </div>
+
+          {/* Painel de categorias em grid simétrico */}
+          <div className="rounded-lg border border-border bg-muted/15 p-4 min-h-[76px]">
+            {categorias.length === 0 ? (
+              <div className="flex h-10 items-center justify-center text-sm text-muted-foreground">
+                Nenhuma categoria criada ainda.
+              </div>
+            ) : (
+              <div className="grid grid-cols-5 gap-2">
+                {categorias.map((cat) => {
+                  const isSelected = selectedCategorias.includes(cat);
+                  const isBeingEdited = editingCategoria === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => handleToggleCategoria(cat)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold transition-all select-none",
+                        editingCategoria !== null
+                          ? isBeingEdited
+                            ? "bg-amber-50 text-amber-700 border-amber-300 ring-2 ring-amber-300 ring-offset-1 cursor-default"
+                            : "opacity-40 cursor-default bg-blue-50 text-blue-600 border-blue-200"
+                          : isSelected
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm cursor-pointer"
+                            : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300 cursor-pointer"
+                      )}
+                    >
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <Tag className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{cat}</span>
+                      </span>
+                      <span
+                        role="button"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteOne(cat); }}
+                        className="shrink-0 ml-1 rounded-sm hover:opacity-60 transition-opacity"
+                        aria-label={`Remover ${cat}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {selectedCategorias.length > 0 && editingCategoria === null && (
+            <p className="text-xs text-muted-foreground mt-3">
+              {selectedCategorias.length} categoria{selectedCategorias.length > 1 ? "s" : ""} selecionada{selectedCategorias.length > 1 ? "s" : ""}.
+              {selectedCategorias.length === 1 ? " Clique em Editar ou Excluir." : " Clique em Excluir para remover todas."}
+            </p>
+          )}
+        </div>
+
         {/* Add transaction form */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-bold text-foreground mb-4">Transações</h2>
@@ -243,7 +412,14 @@ const ControleFinanceiro = () => {
               </SelectContent>
             </Select>
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
-            <Input placeholder="Categoria" value={categoria} onChange={(e) => setCategoria(e.target.value)} />
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent className="max-h-[225px] overflow-y-auto">
+                {categorias.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="col-span-2 md:col-span-5">
               <p className="text-sm font-medium mb-2">Comprovante</p>
               <Input
@@ -339,7 +515,14 @@ const ControleFinanceiro = () => {
               </SelectContent>
             </Select>
             <Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} />
-            <Input placeholder="Categoria" value={editCategoria} onChange={(e) => setEditCategoria(e.target.value)} />
+            <Select value={editCategoria} onValueChange={setEditCategoria}>
+              <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent className="max-h-[200px] overflow-y-auto">
+                {categorias.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="space-y-2">
               <p className="text-sm font-medium">Comprovante</p>
               {transacoes.find((t) => t.id === editingId)?.comprovanteUrl ? (

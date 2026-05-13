@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,18 +14,25 @@ interface LoginProps {
 const Login = ({ onLogin }: LoginProps) => {
   const [username, setUsername] = useState("");
   const [senha, setSenha] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    await apiJson("/api/auth/login/", {
-      method: "POST",
-      body: JSON.stringify({ username, password: senha }),
-    });
-
-    onLogin();
-    navigate("/controle-financeiro");
+    setLoading(true);
+    try {
+      await apiJson("/api/auth/login/", {
+        method: "POST",
+        body: JSON.stringify({ username, password: senha }),
+      });
+      onLogin();
+      navigate("/controle-financeiro");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao fazer login.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,17 +52,28 @@ const Login = ({ onLogin }: LoginProps) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="senha">Senha</Label>
-            <Input
-              id="senha"
-              type="password"
-              placeholder="••••••••••"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="senha"
+                type={mostrarSenha ? "text" : "password"}
+                placeholder="••••••••••"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarSenha((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+                aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
-          <Button type="submit" className="w-full" size="lg">
-            Logar
+          <Button type="submit" className="w-full" size="lg" disabled={loading}>
+            {loading ? "Entrando..." : "Logar"}
           </Button>
         </form>
       </div>
