@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,10 +15,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Pencil, Plus, Tag, X, Check } from "lucide-react";
+import { Trash2, Pencil, Plus, Tag, X, Check, FileDown, ChevronDown, FilterX, ArrowLeft, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
+
+interface CategoriaItem {
+  id: number;
+  nome: string;
+}
 
 interface Transacao {
   id: string;
@@ -42,6 +49,9 @@ const ControleFinanceiro = () => {
   const [data, setData]                             = useState("");
   const [categoria, setCategoria]                   = useState("");
   const [comprovante, setComprovante]               = useState<File | null>(null);
+  const fileInputRef                                = useRef<HTMLInputElement>(null);
+  const editFileInputRef                            = useRef<HTMLInputElement>(null);
+  const filtrosRef                                  = useRef<HTMLDivElement>(null);
   const [editOpen, setEditOpen]                     = useState(false);
   const [editingId, setEditingId]                   = useState<string | null>(null);
   const [editDescricao, setEditDescricao]           = useState("");
@@ -53,10 +63,18 @@ const ControleFinanceiro = () => {
   const [deleteOpen, setDeleteOpen]                 = useState(false);
   const [deletingId, setDeletingId]                 = useState<string | null>(null);
   const [novaCategoria, setNovaCategoria]           = useState("");
-  const [categorias, setCategorias]                 = useState<string[]>(["Geral"]);
-  const [selectedCategorias, setSelectedCategorias] = useState<string[]>([]);
-  const [editingCategoria, setEditingCategoria]     = useState<string | null>(null);
-  
+  const [selectedCategoriaIds, setSelectedCategoriaIds] = useState<number[]>([]);
+  const [editingCategoriaId, setEditingCategoriaId] = useState<number | null>(null);
+  const [deleteCatOpen, setDeleteCatOpen]           = useState(false);
+  const [deletingCatIds, setDeletingCatIds]         = useState<number[]>([]);
+  const [filtrosAbertos, setFiltrosAbertos]         = useState(false);
+  const [busca, setBusca]                           = useState("");
+  const [filtroTipo, setFiltroTipo]                 = useState("todos");
+  const [filtroCategoria, setFiltroCategoria]       = useState("todas");
+  const [dataInicial, setDataInicial]               = useState("");
+  const [dataFinal, setDataFinal]                   = useState("");
+
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: transacoesApi, isLoading, isError, error } = useQuery({
@@ -119,6 +137,7 @@ const ControleFinanceiro = () => {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["transacoes"] });
       setComprovante(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     },
   });
 
@@ -153,6 +172,7 @@ const ControleFinanceiro = () => {
       setEditOpen(false);
       setEditingId(null);
       setEditComprovante(null);
+      if (editFileInputRef.current) editFileInputRef.current.value = "";
     },
   });
 
@@ -165,7 +185,70 @@ const ControleFinanceiro = () => {
     },
   });
 
+  const { data: categorias = [] } = useQuery<CategoriaItem[]>({
+    queryKey: ["categorias"],
+    queryFn: async () => {
+      const res = await apiJson<{ ok: boolean; results: CategoriaItem[] }>("/api/financeiro/categorias/");
+      return res.results ?? [];
+    },
+  });
+
+  const createCategoriaMutation = useMutation({
+    mutationFn: async (nome: string) =>
+      apiJson("/api/financeiro/categorias/", { method: "POST", body: JSON.stringify({ nome }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["categorias"] }),
+  });
+
+  const updateCategoriaMutation = useMutation({
+    mutationFn: async ({ id, nome }: { id: number; nome: string }) =>
+      apiJson(`/api/financeiro/categorias/${id}/`, { method: "PATCH", body: JSON.stringify({ nome }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categorias"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+    },
+  });
+
+  const deleteCategoriaMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      if (ids.length === 1) {
+        return apiJson(`/api/financeiro/categorias/${ids[0]}/`, { method: "DELETE" });
+      }
+      return apiJson("/api/financeiro/categorias/bulk-delete/", {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categorias"] });
+      queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+      setSelectedCategoriaIds([]);
+      setDeleteCatOpen(false);
+      setDeletingCatIds([]);
+    },
+  });
+
   const transacoes = transacoesApi ?? [];
+
+  const transacoesFiltradas = useMemo(() => {
+    return transacoes.filter((t) => {
+      if (busca && !t.descricao.toLowerCase().includes(busca.toLowerCase())) return false;
+      if (filtroTipo !== "todos" && t.tipo !== filtroTipo) return false;
+      if (filtroCategoria !== "todas" && t.categoria !== filtroCategoria) return false;
+      if (dataInicial && t.data < dataInicial) return false;
+      if (dataFinal && t.data > dataFinal) return false;
+      return true;
+    });
+  }, [transacoes, busca, filtroTipo, filtroCategoria, dataInicial, dataFinal]);
+
+  const filtrosAtivos = !!(busca || filtroTipo !== "todos" || filtroCategoria !== "todas" || dataInicial || dataFinal);
+
+  const limparFiltros = () => {
+    setBusca("");
+    setFiltroTipo("todos");
+    setFiltroCategoria("todas");
+    setDataInicial("");
+    setDataFinal("");
+  };
 
   const totalEntradas = transacoes.filter((t) => t.tipo === "entrada").reduce((acc, t) => acc + t.valor, 0);
   const totalSaidas = transacoes.filter((t) => t.tipo === "saida").reduce((acc, t) => acc + t.valor, 0);
@@ -181,6 +264,7 @@ const ControleFinanceiro = () => {
     setData("");
     setCategoria("");
     setComprovante(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDelete = (id: string) => {
@@ -200,61 +284,52 @@ const ControleFinanceiro = () => {
     setEditData(t.data);
     setEditCategoria(t.categoria);
     setEditComprovante(null);
+    if (editFileInputRef.current) editFileInputRef.current.value = "";
     setEditOpen(true);
   };
 
-  const handleAddCategoria = () => {
+  const handleAddCategoria = async () => {
     const nome = novaCategoria.trim();
     if (!nome) return;
-    if (editingCategoria !== null) {
-      if (nome !== editingCategoria && categorias.includes(nome)) return;
-      setCategorias((prev) => prev.map((c) => (c === editingCategoria ? nome : c)));
-      if (categoria === editingCategoria) setCategoria(nome);
-      if (editCategoria === editingCategoria) setEditCategoria(nome);
-      setEditingCategoria(null);
-      setSelectedCategorias([]);
+    if (editingCategoriaId !== null) {
+      await updateCategoriaMutation.mutateAsync({ id: editingCategoriaId, nome });
+      setEditingCategoriaId(null);
+      setSelectedCategoriaIds([]);
       setNovaCategoria("");
     } else {
-      if (!categorias.includes(nome)) {
-        setCategorias((prev) => [...prev, nome]);
-        setNovaCategoria("");
-      }
+      await createCategoriaMutation.mutateAsync(nome);
+      setNovaCategoria("");
     }
   };
 
-  const handleToggleCategoria = (cat: string) => {
-    if (editingCategoria !== null) return;
-    setSelectedCategorias((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+  const handleToggleCategoria = (id: number) => {
+    if (editingCategoriaId !== null) return;
+    setSelectedCategoriaIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
   const handleEditSelected = () => {
-    if (selectedCategorias.length !== 1) return;
-    setEditingCategoria(selectedCategorias[0]);
-    setNovaCategoria(selectedCategorias[0]);
+    if (selectedCategoriaIds.length !== 1) return;
+    const cat = categorias.find((c) => c.id === selectedCategoriaIds[0]);
+    if (!cat) return;
+    setEditingCategoriaId(cat.id);
+    setNovaCategoria(cat.nome);
   };
 
   const handleCancelEdit = () => {
-    setEditingCategoria(null);
+    setEditingCategoriaId(null);
     setNovaCategoria("");
-    setSelectedCategorias([]);
+    setSelectedCategoriaIds([]);
   };
 
-  const handleDeleteSelected = () => {
-    const toDelete = new Set(selectedCategorias);
-    setCategorias((prev) => prev.filter((c) => !toDelete.has(c)));
-    if (toDelete.has(categoria)) setCategoria("");
-    if (toDelete.has(editCategoria)) setEditCategoria("");
-    setSelectedCategorias([]);
+  const handleAskDeleteCat = (ids: number[]) => {
+    setDeletingCatIds(ids);
+    setDeleteCatOpen(true);
   };
 
-  const handleDeleteOne = (cat: string) => {
-    setCategorias((prev) => prev.filter((c) => c !== cat));
-    setSelectedCategorias((prev) => prev.filter((c) => c !== cat));
-    if (categoria === cat) setCategoria("");
-    if (editCategoria === cat) setEditCategoria("");
-    if (editingCategoria === cat) handleCancelEdit();
+  const handleConfirmDeleteCat = async () => {
+    await deleteCategoriaMutation.mutateAsync(deletingCatIds);
   };
 
   const formatCurrency = (v: number) =>
@@ -263,21 +338,50 @@ const ControleFinanceiro = () => {
   return (
     <div className="animate-fade-in py-10 px-6">
       <div className="container max-w-5xl mx-auto space-y-8">
-        <h1 className="text-2xl font-extrabold text-foreground">Controle financeiro</h1>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/prestacao-de-contas")} className="h-9 w-9 text-muted-foreground">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-extrabold text-foreground">Controle financeiro</h1>
+              <p className="text-sm text-muted-foreground">Gerencie entradas, saídas e categorias da organização.</p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" onClick={() => navigate("/exportar-relatorio")} className="gap-2 shrink-0">
+            <FileDown className="w-4 h-4" />
+            Exportar relatório
+          </Button>
+        </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-card border border-border rounded-lg p-5 text-center">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Saldo Atual</p>
-            <p className="text-2xl font-bold text-primary">{formatCurrency(saldo)}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-card border border-border rounded-lg p-5 flex items-center gap-4">
+            <span className="flex-shrink-0 w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-success" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Receitas</p>
+              <p className="text-xl font-bold text-success">{formatCurrency(totalEntradas)}</p>
+            </div>
           </div>
-          <div className="bg-card border border-border rounded-lg p-5 text-center">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Receitas</p>
-            <p className="text-2xl font-bold text-success">{formatCurrency(totalEntradas)}</p>
+          <div className="bg-card border border-border rounded-lg p-5 flex items-center gap-4">
+            <span className="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5 text-destructive" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Despesas</p>
+              <p className="text-xl font-bold text-destructive">{formatCurrency(totalSaidas)}</p>
+            </div>
           </div>
-          <div className="bg-card border border-border rounded-lg p-5 text-center">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Despesas</p>
-            <p className="text-2xl font-bold text-destructive">{formatCurrency(totalSaidas)}</p>
+          <div className="bg-card border border-border rounded-lg p-5 flex items-center gap-4">
+            <span className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${saldo >= 0 ? "bg-primary/10" : "bg-destructive/10"}`}>
+              <Wallet className={`w-5 h-5 ${saldo >= 0 ? "text-primary" : "text-destructive"}`} />
+            </span>
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Saldo Atual</p>
+              <p className={`text-xl font-bold ${saldo >= 0 ? "text-primary" : "text-destructive"}`}>{formatCurrency(saldo)}</p>
+            </div>
           </div>
         </div>
 
@@ -285,26 +389,26 @@ const ControleFinanceiro = () => {
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-bold text-foreground mb-5">Categorias</h2>
 
-          {/* Toolbar unificada: input + ações na mesma linha */}
-          <div className="flex items-center gap-2 mb-5">
+          {/* Toolbar unificada */}
+          <div className="flex items-center justify-center gap-3 mb-4">
             <Input
-              placeholder={editingCategoria ? `Editando "${editingCategoria}"…` : "Nova categoria..."}
+              placeholder={editingCategoriaId !== null ? `Editando "${categorias.find(c => c.id === editingCategoriaId)?.nome}"…` : "Nova categoria..."}
               value={novaCategoria}
               onChange={(e) => setNovaCategoria(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategoria(); } }}
-              className="w-52 shrink-0"
+              className="w-60"
             />
-            {editingCategoria ? (
+            {editingCategoriaId !== null ? (
               <>
-                <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim()}>
+                <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim() || updateCategoriaMutation.isPending}>
                   <Check className="w-3.5 h-3.5" /> Salvar
                 </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={handleCancelEdit}>
+                <Button type="button" size="sm" variant="ghost" className="border" onClick={handleCancelEdit}>
                   Cancelar
                 </Button>
               </>
             ) : (
-              <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim()}>
+              <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim() || createCategoriaMutation.isPending}>
                 <Plus className="w-3.5 h-3.5" /> Adicionar
               </Button>
             )}
@@ -316,7 +420,7 @@ const ControleFinanceiro = () => {
               variant="outline"
               size="sm"
               onClick={handleEditSelected}
-              disabled={selectedCategorias.length !== 1 || editingCategoria !== null}
+              disabled={selectedCategoriaIds.length !== 1 || editingCategoriaId !== null}
             >
               <Pencil className="w-3.5 h-3.5" /> Editar
             </Button>
@@ -324,10 +428,10 @@ const ControleFinanceiro = () => {
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleDeleteSelected}
-              disabled={selectedCategorias.length === 0 || editingCategoria !== null}
+              onClick={() => handleAskDeleteCat(selectedCategoriaIds)}
+              disabled={selectedCategoriaIds.length === 0 || editingCategoriaId !== null}
               className={cn(
-                selectedCategorias.length > 0 && editingCategoria === null
+                selectedCategoriaIds.length > 0 && editingCategoriaId === null
                   ? "text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                   : ""
               )}
@@ -340,21 +444,21 @@ const ControleFinanceiro = () => {
           <div className="rounded-lg border border-border bg-muted/15 p-4 min-h-[76px]">
             {categorias.length === 0 ? (
               <div className="flex h-10 items-center justify-center text-sm text-muted-foreground">
-                Nenhuma categoria criada ainda.
+                Nenhuma categoria cadastrada ainda.
               </div>
             ) : (
               <div className="grid grid-cols-5 gap-2">
                 {categorias.map((cat) => {
-                  const isSelected = selectedCategorias.includes(cat);
-                  const isBeingEdited = editingCategoria === cat;
+                  const isSelected = selectedCategoriaIds.includes(cat.id);
+                  const isBeingEdited = editingCategoriaId === cat.id;
                   return (
                     <button
-                      key={cat}
+                      key={cat.id}
                       type="button"
-                      onClick={() => handleToggleCategoria(cat)}
+                      onClick={() => handleToggleCategoria(cat.id)}
                       className={cn(
                         "flex w-full items-center justify-between gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold transition-all select-none",
-                        editingCategoria !== null
+                        editingCategoriaId !== null
                           ? isBeingEdited
                             ? "bg-amber-50 text-amber-700 border-amber-300 ring-2 ring-amber-300 ring-offset-1 cursor-default"
                             : "opacity-40 cursor-default bg-blue-50 text-blue-600 border-blue-200"
@@ -365,13 +469,13 @@ const ControleFinanceiro = () => {
                     >
                       <span className="flex items-center gap-1.5 min-w-0">
                         <Tag className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{cat}</span>
+                        <span className="truncate">{cat.nome}</span>
                       </span>
                       <span
                         role="button"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteOne(cat); }}
+                        onClick={(e) => { e.stopPropagation(); handleAskDeleteCat([cat.id]); }}
                         className="shrink-0 ml-1 rounded-sm hover:opacity-60 transition-opacity"
-                        aria-label={`Remover ${cat}`}
+                        aria-label={`Remover ${cat.nome}`}
                       >
                         <X className="w-3 h-3" />
                       </span>
@@ -382,16 +486,16 @@ const ControleFinanceiro = () => {
             )}
           </div>
 
-          {selectedCategorias.length > 0 && editingCategoria === null && (
+          {selectedCategoriaIds.length > 0 && editingCategoriaId === null && (
             <p className="text-xs text-muted-foreground mt-3">
-              {selectedCategorias.length} categoria{selectedCategorias.length > 1 ? "s" : ""} selecionada{selectedCategorias.length > 1 ? "s" : ""}.
-              {selectedCategorias.length === 1 ? " Clique em Editar ou Excluir." : " Clique em Excluir para remover todas."}
+              {selectedCategoriaIds.length} categoria{selectedCategoriaIds.length > 1 ? "s" : ""} selecionada{selectedCategoriaIds.length > 1 ? "s" : ""}.
+              {selectedCategoriaIds.length === 1 ? " Clique em Editar ou Excluir." : " Clique em Excluir para remover todas."}
             </p>
           )}
         </div>
 
         {/* Add transaction form */}
-        <div className="bg-card border border-border rounded-lg p-6">
+        <div ref={filtrosRef} className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-bold text-foreground mb-4">Transações</h2>
           {isLoading ? (
             <p className="text-sm text-muted-foreground mb-4">Carregando transações…</p>
@@ -414,26 +518,133 @@ const ControleFinanceiro = () => {
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
             <Select value={categoria} onValueChange={setCategoria}>
               <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-              <SelectContent className="max-h-[225px] overflow-y-auto">
+              <SelectContent className="max-h-[200px] overflow-y-auto">
                 {categorias.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <div className="col-span-2 md:col-span-5">
+
+            <div className="col-span-2 md:col-span-3">
               <p className="text-sm font-medium mb-2">Comprovante</p>
-              <Input
+              <input
+                ref={fileInputRef}
+                
                 type="file"
                 accept="image/*"
+                className="hidden"
                 onChange={(e) => setComprovante(e.target.files?.[0] ?? null)}
               />
+              {comprovante ? (
+                <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="flex-1 truncate text-foreground">{comprovante.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setComprovante(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                    className="shrink-0 rounded-sm text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label="Remover ficheiro"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-muted-foreground font-normal"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Escolher ficheiro
+                </Button>
+              )}
+            </div>
+            <div className="col-span-2 md:col-span-2 flex items-end gap-2">
+              <Button type="submit" onClick={handleAdd} className="flex-1">
+                Salvar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFiltrosAbertos((v) => !v)}
+                className="flex-1 gap-2"
+              >
+                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", filtrosAbertos && "rotate-180")} />
+                {filtrosAbertos ? "Desabilitar Filtros" : "Habilitar Filtros"}
+              </Button>
             </div>
           </form>
-          <div className="flex justify-end mb-6">
-            <Button type="submit" onClick={handleAdd}>Salvar</Button>
-          </div>
+
+          {/* Painel de filtros */}
+          {filtrosAbertos && (
+            <div className="bg-muted/20 border border-border rounded-lg p-5 space-y-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Descrição</p>
+                  <Input placeholder="Buscar por descrição..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tipo</p>
+                  <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                    <SelectTrigger><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os tipos</SelectItem>
+                      <SelectItem value="entrada">Entrada</SelectItem>
+                      <SelectItem value="saida">Saída</SelectItem>
+                      <SelectItem value="transferencia">Transferência</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Categoria</p>
+                  <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
+                    <SelectTrigger><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
+                    <SelectContent className="max-h-[200px] overflow-y-auto">
+                      <SelectItem value="todas">Todas as categorias</SelectItem>
+                      {categorias.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data inicial</p>
+                  <Input type="date" value={dataInicial} onChange={(e) => setDataInicial(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data final</p>
+                  <Input type="date" value={dataFinal} onChange={(e) => setDataFinal(e.target.value)} />
+                </div>
+                <div className="flex flex-col justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={limparFiltros}
+                    disabled={!filtrosAtivos}
+                    className={cn(
+                      "w-full gap-2 transition-colors",
+                      filtrosAtivos
+                        ? "border-primary text-primary hover:bg-primary/30 hover:text-primary"
+                        : "border-primary/40 text-primary/40 cursor-not-allowed"
+                    )}
+                  >
+                    <FilterX className="w-4 h-4" />
+                    Limpar filtros
+                  </Button>
+                </div>
+              </div>
+              {filtrosAtivos && (
+                <p className="text-xs text-muted-foreground">
+                  Filtros ativos — exibindo{" "}
+                  <span className="font-semibold text-foreground">{transacoesFiltradas.length}</span>{" "}
+                  de{" "}
+                  <span className="font-semibold text-foreground">{transacoes.length}</span> transações.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Transactions table */}
+          <div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -446,14 +657,14 @@ const ControleFinanceiro = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transacoes.length === 0 ? (
+              {transacoesFiltradas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
-                    Nenhuma transação cadastrada.
+                    {filtrosAtivos ? "Nenhuma transação encontrada com os filtros aplicados." : "Nenhuma transação cadastrada."}
                   </TableCell>
                 </TableRow>
               ) : null}
-              {transacoes.map((t) => (
+              {transacoesFiltradas.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>{t.descricao}</TableCell>
                   <TableCell className={t.tipo === "entrada" ? "text-success font-semibold" : "text-destructive font-semibold"}>
@@ -470,14 +681,14 @@ const ControleFinanceiro = () => {
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-8 px-2 text-xs"
+                          className="h-8 px-2 text-xs border"
                           onClick={() => window.open(t.comprovanteUrl ?? "", "_blank", "noopener,noreferrer")}
                         >
                           Ver comprovante
                         </Button>
                       ) : null}
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEdit(t)}>
-                        <Pencil className="w-4 h-4 text-muted-foreground" />
+                      <Button type="button" variant="ghost" size="icon" className="group h-8 w-8 hover:bg-primary" onClick={() => handleOpenEdit(t)}>
+                        <Pencil className="w-4 h-4 text-muted-foreground transition-colors group-hover:text-white" />
                       </Button>
                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAskDelete(t.id)}>
                         <Trash2 className="w-4 h-4 text-destructive" />
@@ -488,8 +699,11 @@ const ControleFinanceiro = () => {
               ))}
             </TableBody>
           </Table>
+          </div>
         </div>
       </div>
+
+      <ScrollToTopButton targetRef={filtrosRef} />
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
@@ -519,7 +733,7 @@ const ControleFinanceiro = () => {
               <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
                 {categorias.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -540,11 +754,35 @@ const ControleFinanceiro = () => {
               ) : (
                 <p className="text-xs text-muted-foreground">Nenhum comprovante anexado.</p>
               )}
-              <Input
+              <input
+                ref={editFileInputRef}
                 type="file"
                 accept="image/*"
+                className="hidden"
                 onChange={(e) => setEditComprovante(e.target.files?.[0] ?? null)}
               />
+              {editComprovante ? (
+                <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="flex-1 truncate text-foreground">{editComprovante.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setEditComprovante(null); if (editFileInputRef.current) editFileInputRef.current.value = ""; }}
+                    className="shrink-0 rounded-sm text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label="Remover ficheiro"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-muted-foreground font-normal"
+                  onClick={() => editFileInputRef.current?.click()}
+                >
+                  Escolher ficheiro
+                </Button>
+              )}
               <p className="text-xs text-muted-foreground">
                 Se selecionar um arquivo, ele será enviado ao salvar.
               </p>
@@ -601,6 +839,39 @@ const ControleFinanceiro = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog
+        open={deleteCatOpen}
+        onOpenChange={(v) => {
+          setDeleteCatOpen(v);
+          if (!v) setDeletingCatIds([]);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {deletingCatIds.length === 1 ? "categoria" : `${deletingCatIds.length} categorias`}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingCatIds.length === 1
+                ? `A categoria "${categorias.find(c => c.id === deletingCatIds[0])?.nome}" será removida permanentemente. Todas as transações vinculadas a ela também serão excluídas.`
+                : `As ${deletingCatIds.length} categorias selecionadas serão removidas permanentemente junto com todas as transações vinculadas a elas.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              onClick={handleConfirmDeleteCat}
+              disabled={deleteCategoriaMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCategoriaMutation.isPending ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };

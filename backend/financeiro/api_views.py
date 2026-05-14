@@ -43,10 +43,80 @@ def _transacao_to_dict(t: Transacao):
     }
 
 
-@require_http_methods(["GET"])
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def categorias_list(request: HttpRequest):
-    categorias = [{"id": c.id, "nome": c.nome} for c in Categoria.objects.order_by("nome")]
-    return JsonResponse({"ok": True, "results": categorias})
+    if request.method == "GET":
+        categorias = [{"id": c.id, "nome": c.nome} for c in Categoria.objects.order_by("nome")]
+        return JsonResponse({"ok": True, "results": categorias})
+
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return _json_error("Apenas administrador pode cadastrar categorias.", status=403)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return _json_error("JSON inválido.")
+
+    nome = (payload.get("nome") or "").strip()
+    if not nome:
+        return _json_error("Nome da categoria é obrigatório.")
+    if len(nome) > 100:
+        return _json_error("Nome muito longo (máximo 100 caracteres).")
+    if Categoria.objects.filter(nome__iexact=nome).exists():
+        return _json_error("Já existe uma categoria com esse nome.")
+
+    categoria = Categoria.objects.create(nome=nome)
+    return JsonResponse({"ok": True, "result": {"id": categoria.id, "nome": categoria.nome}}, status=201)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH", "DELETE"])
+def categoria_detail(request: HttpRequest, pk: int):
+    categoria = get_object_or_404(Categoria, pk=pk)
+
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return _json_error("Apenas administrador pode modificar categorias.", status=403)
+
+    if request.method == "DELETE":
+        categoria.delete()
+        return JsonResponse({"ok": True})
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return _json_error("JSON inválido.")
+
+    nome = (payload.get("nome") or "").strip()
+    if not nome:
+        return _json_error("Nome da categoria é obrigatório.")
+    if len(nome) > 100:
+        return _json_error("Nome muito longo (máximo 100 caracteres).")
+    if Categoria.objects.filter(nome__iexact=nome).exclude(pk=pk).exists():
+        return _json_error("Já existe uma categoria com esse nome.")
+
+    categoria.nome = nome
+    categoria.save()
+    return JsonResponse({"ok": True, "result": {"id": categoria.id, "nome": categoria.nome}})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def categorias_bulk_delete(request: HttpRequest):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return _json_error("Apenas administrador pode excluir categorias.", status=403)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return _json_error("JSON inválido.")
+
+    ids = payload.get("ids") or []
+    if not ids or not isinstance(ids, list):
+        return _json_error("Informe uma lista de IDs.")
+
+    Categoria.objects.filter(pk__in=ids).delete()
+    return JsonResponse({"ok": True})
 
 
 @csrf_exempt

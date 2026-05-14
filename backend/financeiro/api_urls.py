@@ -5,6 +5,8 @@ from . import api_views
 
 urlpatterns = [
     path("categorias/", api_views.categorias_list, name="api_categorias_list"),
+    path("categorias/bulk-delete/", api_views.categorias_bulk_delete, name="api_categorias_bulk_delete"),
+    path("categorias/<int:pk>/", api_views.categoria_detail, name="api_categoria_detail"),
     path("transacoes/", api_views.transacoes_list_create, name="api_transacoes_list_create"),
     path("transacoes/<int:pk>/", api_views.transacao_detail, name="api_transacao_detail"),
     path(

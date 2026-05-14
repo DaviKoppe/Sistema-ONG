@@ -1,24 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
-import { Heart, LogIn, User } from "lucide-react";
+import { Heart, LogIn, Moon, Sun, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/context/ThemeContext";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
   onLogout?: () => void;
+  username?: string;
 }
 
-const Navbar = ({ isLoggedIn = false, onLogout }: NavbarProps) => {
+const Navbar = ({ isLoggedIn = false, onLogout, username }: NavbarProps) => {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   const navItems = [
     { label: "TELA INICIAL", path: "/" },
-    { label: "VISUALIZAÇÃO PÚBLICA", path: "/prestacao-de-contas" },
+    { label: "PRESTAÇÃO DE CONTAS", path: "/prestacao-de-contas" },
   ];
 
   const loggedInItems = [
     { label: "PAINEL DE CONTROLE FINANCEIRO", path: "/controle-financeiro" },
-    { label: "EXPORTAR", path: "/controle-financeiro" },
-    { label: "RELATÓRIOS", path: "/controle-financeiro" },
+    { label: "EXPORTAR - CONSULTA", path: "/exportar-relatorio" },
   ];
 
   return (
@@ -44,12 +46,12 @@ const Navbar = ({ isLoggedIn = false, onLogout }: NavbarProps) => {
             </Link>
           ))}
           {isLoggedIn &&
-            loggedInItems.map((item, i) => (
+            loggedInItems.map((item) => (
               <Link
-                key={i}
+                key={item.path}
                 to={item.path}
                 className={`px-3 py-1.5 rounded text-sm font-semibold transition-colors ${
-                  location.pathname === item.path && i === 0
+                  location.pathname === item.path
                     ? "bg-primary-foreground/20 text-primary-foreground"
                     : "text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
                 }`}
@@ -65,20 +67,45 @@ const Navbar = ({ isLoggedIn = false, onLogout }: NavbarProps) => {
             <Link to="/meu-perfil">
               <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
                 <User className="w-4 h-4 mr-1" />
-                MEU PERFIL
+                {username}
               </Button>
             </Link>
-            <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10" onClick={onLogout}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Alternar tema"
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={onLogout}
+            >
               Sair
             </Button>
           </>
         ) : (
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 font-semibold">
-              <LogIn className="w-4 h-4 mr-1" />
-              Fazer Login
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Alternar tema"
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
-          </Link>
+            <Link to="/login">
+              <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 font-semibold">
+                <LogIn className="w-4 h-4 mr-1" />
+                Fazer Login
+              </Button>
+            </Link>
+          </>
         )}
       </div>
     </nav>

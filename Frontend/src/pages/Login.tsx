@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { apiJson } from "@/lib/api";
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (username: string) => void;
 }
 
 const Login = ({ onLogin }: LoginProps) => {
@@ -22,11 +22,11 @@ const Login = ({ onLogin }: LoginProps) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await apiJson("/api/auth/login/", {
+      const data = await apiJson<{ ok: boolean; username: string }>("/api/auth/login/", {
         method: "POST",
         body: JSON.stringify({ username, password: senha }),
       });
-      onLogin();
+      onLogin(data.username);
       navigate("/controle-financeiro");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao fazer login.");
