@@ -1,7 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Heart, LogIn, Moon, Sun, User } from "lucide-react";
+import { LogIn, Moon, Sun, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/context/ThemeContext";
+import LogoImg from "../../assets/Logo.png";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -27,9 +28,11 @@ const Navbar = ({ isLoggedIn = false, onLogout, username }: NavbarProps) => {
     <nav className="h-16 bg-primary flex items-center px-6 justify-between shadow-md">
       <div className="flex items-center gap-6">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-foreground rounded-full flex items-center justify-center">
-            <Heart className="w-4 h-4 text-primary" />
-          </div>
+          <img
+            src={LogoImg}
+            alt="Amigos do Zé Alguém"
+            className="w-9 h-9 rounded-full object-cover ring-2 ring-primary-foreground/30"
+          />
         </Link>
         <div className="flex items-center gap-1">
           {navItems.map((item) => (

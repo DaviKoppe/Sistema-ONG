@@ -28,12 +28,12 @@ const Index = () => {
       <section className="py-16 px-6">
         <div className="container max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           {/* Carrossel */}
-          <div className="px-12">
+          <div className="px-10">
             <Carousel className="w-full" opts={{ loop: true }}>
               <CarouselContent>
                 {Array.from({ length: SLIDE_COUNT }).map((_, i) => (
                   <CarouselItem key={i}>
-                    <div className="bg-muted rounded-lg aspect-[4/3] flex items-center justify-center">
+                    <div className="bg-muted rounded-lg aspect-[5/4] flex items-center justify-center">
                       <div className="text-center space-y-3 text-muted-foreground">
                         <Heart className="w-16 h-16 mx-auto" />
                         <p className="text-sm font-semibold">Imagens da ONG</p>
@@ -48,10 +48,12 @@ const Index = () => {
           </div>
 
           {/* Texto */}
-          <div className="space-y-5">
-            <h1 className="text-3xl font-extrabold text-foreground leading-tight">
-              Amigos do Zé Alguém
-            </h1>
+          <div className="space-y-6">
+            <div className="flex items-center gap-5">
+              <h1 className="text-3xl font-extrabold text-foreground leading-tight">
+                Amigos do Zé Alguém
+              </h1>
+            </div>
             <p className="text-muted-foreground leading-relaxed text-justify">
               A ONG Amigos do Zé Alguém realiza atividades sociais voltadas ao apoio de pessoas em
               situação de vulnerabilidade. Este sistema permite acompanhar de forma transparente as
@@ -59,7 +61,7 @@ const Index = () => {
               informações das transações feitas pela ONG.
             </p>
             <Link to="/prestacao-de-contas">
-              <Button size="lg" className="mt-2">
+              <Button size="lg" className="mt-9">
                 Ver mais informações
               </Button>
             </Link>
