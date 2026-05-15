@@ -11,20 +11,23 @@ import PrestacaoDeContas from "./pages/PrestacaoDeContas";
 import Login from "./pages/Login";
 import ControleFinanceiro from "./pages/ControleFinanceiro";
 import ExportarRelatorio from "./pages/ExportarRelatorio";
-import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("isLoggedIn") === "true");
+  const [username, setUsername] = useState(() => localStorage.getItem("username") ?? "");
 
   const handleLogin = (name: string) => {
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("username", name);
     setIsLoggedIn(true);
     setUsername(name);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("username");
     setIsLoggedIn(false);
     setUsername("");
   };
@@ -43,7 +46,6 @@ const App = () => {
                 <Route path="/login" element={<Login onLogin={handleLogin} />} />
                 <Route path="/controle-financeiro" element={<ControleFinanceiro />} />
                 <Route path="/exportar-relatorio" element={<ExportarRelatorio />} />
-                <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>
           </BrowserRouter>

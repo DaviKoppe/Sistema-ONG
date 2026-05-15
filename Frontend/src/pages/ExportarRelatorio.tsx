@@ -255,12 +255,12 @@ const ExportarRelatorio = () => {
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 48 },
+        0: { cellWidth: 38 },
         1: { cellWidth: 32 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 38 },
-        4: { cellWidth: 22 },
-        5: { cellWidth: 22 },
+        2: { cellWidth: 28 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 27 },
+        5: { cellWidth: 28 },
       },
       didParseCell: (data) => {
         if (data.section === "body" && data.column.index === 3) {
@@ -302,7 +302,7 @@ const ExportarRelatorio = () => {
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/controle-financeiro")}
               className="h-9 w-9 text-muted-foreground"
             >
               <ArrowLeft className="w-5 h-5" />

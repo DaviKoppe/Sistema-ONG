@@ -390,13 +390,13 @@ const ControleFinanceiro = () => {
           <h2 className="text-lg font-bold text-foreground mb-5">Categorias</h2>
 
           {/* Toolbar unificada */}
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4">
             <Input
               placeholder={editingCategoriaId !== null ? `Editando "${categorias.find(c => c.id === editingCategoriaId)?.nome}"…` : "Nova categoria..."}
               value={novaCategoria}
               onChange={(e) => setNovaCategoria(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategoria(); } }}
-              className="w-60"
+              className="w-80"
             />
             {editingCategoriaId !== null ? (
               <>

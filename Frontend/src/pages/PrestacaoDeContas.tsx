@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ const formatData = (dateStr: string) => {
 };
 
 const PrestacaoDeContas = () => {
+  const navigate = useNavigate();
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const activeItemRef = useRef<HTMLDivElement | null>(null);
   const [openValue, setOpenValue] = useState<string>("");
@@ -79,16 +80,17 @@ const PrestacaoDeContas = () => {
   });
 
   return (
-    <div className="animate-fade-in py-12 px-6">
-      <div className="container max-w-4xl mx-auto">
-        <Link to="/" className="inline-flex items-center gap-1 text-primary hover:underline text-sm mb-8">
-          <ArrowLeft className="w-4 h-4" />
-          Voltar
-        </Link>
-
-        <h1 className="text-3xl font-extrabold text-foreground text-center mb-10">
-          Prestação de contas
-        </h1>
+    <div className="animate-fade-in py-10 px-6">
+      <div className="container max-w-4xl mx-auto space-y-8">
+        <div className="flex items-center gap-3">
+          <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9 text-muted-foreground">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-extrabold text-foreground">Prestação de contas</h1>
+            <p className="text-sm text-muted-foreground">Transparência das movimentações financeiras da organização.</p>
+          </div>
+        </div>
 
         {isLoading ? (
           <p className="text-center text-muted-foreground">Carregando...</p>
