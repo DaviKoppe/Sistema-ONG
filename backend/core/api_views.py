@@ -47,7 +47,7 @@ def login_view(request: HttpRequest):
         return _json_error("Credenciais inválidas.", status=401)
 
     login(request, user)
-    return JsonResponse({"ok": True})
+    return JsonResponse({"ok": True, "username": user.username})
 
 
 @csrf_exempt

@@ -4,36 +4,54 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "./context/ThemeContext";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import PrestacaoDeContas from "./pages/PrestacaoDeContas";
 import Login from "./pages/Login";
 import ControleFinanceiro from "./pages/ControleFinanceiro";
-import NotFound from "./pages/NotFound";
+import ExportarRelatorio from "./pages/ExportarRelatorio";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("isLoggedIn") === "true");
+  const [username, setUsername] = useState(() => localStorage.getItem("username") ?? "");
+
+  const handleLogin = (name: string) => {
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("username", name);
+    setIsLoggedIn(true);
+    setUsername(name);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("username");
+    setIsLoggedIn(false);
+    setUsername("");
+  };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Layout isLoggedIn={isLoggedIn} onLogout={() => setIsLoggedIn(false)}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/prestacao-de-contas" element={<PrestacaoDeContas />} />
-              <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
-              <Route path="/controle-financeiro" element={<ControleFinanceiro />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Layout isLoggedIn={isLoggedIn} onLogout={handleLogout} username={username}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/prestacao-de-contas" element={<PrestacaoDeContas />} />
+                <Route path="/login" element={<Login onLogin={handleLogin} />} />
+                <Route path="/controle-financeiro" element={<ControleFinanceiro />} />
+                <Route path="/exportar-relatorio" element={<ExportarRelatorio />} />
+              </Routes>
+            </Layout>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 
