@@ -38,6 +38,10 @@ const DateInput = ({ value, onChange, className, ...props }: DateInputProps) => 
   }, [value]);
 
   const handleVisibleClick = () => {
+    datePickerRef.current?.showPicker?.();
+  };
+
+  const handleVisibleFocus = () => {
     datePickerRef.current?.focus();
     datePickerRef.current?.showPicker?.();
   };
@@ -54,6 +58,7 @@ const DateInput = ({ value, onChange, className, ...props }: DateInputProps) => 
         placeholder="dd/mm/aaaa"
         value={display}
         onClick={handleVisibleClick}
+        onFocus={handleVisibleFocus}
         className={cn(className, "pr-10", isFocused && "ring-2 ring-ring")}
         {...props}
       />
@@ -65,7 +70,9 @@ const DateInput = ({ value, onChange, className, ...props }: DateInputProps) => 
         onChange={handleDatePickerChange}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        className="absolute inset-0 opacity-0 cursor-pointer"
+        aria-hidden="true"
+        tabIndex={-1}
+        className="absolute inset-0 opacity-0 pointer-events-none"
       />
     </div>
   );
