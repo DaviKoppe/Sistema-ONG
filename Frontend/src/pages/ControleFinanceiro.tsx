@@ -2,20 +2,14 @@ import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import DateInput from "@/components/ui/DateInput";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Trash2, Pencil, Plus, Tag, X, Check, FileDown, ChevronDown, FilterX, ArrowLeft, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import TabelaTransacoes from "@/components/TabelaTransacoes";
+import ModalConfirmacao from "@/components/ModalConfirmacao";
+import ModalEditarTransacao from "@/components/ModalEditarTransacao";
+import FiltroTransacoes from "@/components/FiltroTransacoes";
+import { Trash2, Pencil, Plus, Tag, X, Check, FileDown, SlidersHorizontal, ArrowLeft } from "lucide-react";
+import ResumoFinanceiroCards from "@/components/ResumoFinanceiroCards";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -43,36 +37,40 @@ function toApiTipo(tipo: Transacao["tipo"]): "entrada" | "saída" | "transferenc
 }
 
 const ControleFinanceiro = () => {
-  const [descricao, setDescricao]                   = useState("");
-  const [valor, setValor]                           = useState("");
-  const [tipo, setTipo]                             = useState<string>("");
-  const [data, setData]                             = useState("");
-  const [categoria, setCategoria]                   = useState("");
-  const [comprovante, setComprovante]               = useState<File | null>(null);
-  const fileInputRef                                = useRef<HTMLInputElement>(null);
-  const editFileInputRef                            = useRef<HTMLInputElement>(null);
-  const filtrosRef                                  = useRef<HTMLDivElement>(null);
-  const [editOpen, setEditOpen]                     = useState(false);
-  const [editingId, setEditingId]                   = useState<string | null>(null);
-  const [editDescricao, setEditDescricao]           = useState("");
-  const [editValor, setEditValor]                   = useState("");
-  const [editTipo, setEditTipo]                     = useState<Transacao["tipo"]>("entrada");
-  const [editData, setEditData]                     = useState("");
-  const [editCategoria, setEditCategoria]           = useState("");
-  const [editComprovante, setEditComprovante]       = useState<File | null>(null);
-  const [deleteOpen, setDeleteOpen]                 = useState(false);
-  const [deletingId, setDeletingId]                 = useState<string | null>(null);
-  const [novaCategoria, setNovaCategoria]           = useState("");
-  const [selectedCategoriaIds, setSelectedCategoriaIds] = useState<number[]>([]);
-  const [editingCategoriaId, setEditingCategoriaId] = useState<number | null>(null);
-  const [deleteCatOpen, setDeleteCatOpen]           = useState(false);
-  const [deletingCatIds, setDeletingCatIds]         = useState<number[]>([]);
-  const [filtrosAbertos, setFiltrosAbertos]         = useState(false);
-  const [busca, setBusca]                           = useState("");
-  const [filtroTipo, setFiltroTipo]                 = useState("todos");
-  const [filtroCategoria, setFiltroCategoria]       = useState("todas");
-  const [dataInicial, setDataInicial]               = useState("");
-  const [dataFinal, setDataFinal]                   = useState("");
+  const [descricao, setDescricao]              = useState("");
+  const [valor, setValor]                      = useState("");
+  const [tipo, setTipo]                        = useState<string>("");
+  const [data, setData]                        = useState("");
+  const [categoria, setCategoria]              = useState("");
+  const [comprovante, setComprovante]          = useState<File | null>(null);
+
+  const fileInputRef                           = useRef<HTMLInputElement>(null);
+  const filtrosRef                             = useRef<HTMLDivElement>(null);
+
+  const [editOpen, setEditOpen]                = useState(false);
+  const [editingId, setEditingId]              = useState<string | null>(null);
+  const [editDescricao, setEditDescricao]      = useState("");
+  const [editValor, setEditValor]              = useState("");
+  const [editTipo, setEditTipo]                = useState<Transacao["tipo"]>("entrada");
+  const [editData, setEditData]                = useState("");
+  const [editCategoria, setEditCategoria]      = useState("");
+  const [editComprovante, setEditComprovante]  = useState<File | null>(null);
+
+  const [deleteOpen, setDeleteOpen]            = useState(false);
+  const [deletingId, setDeletingId]            = useState<string | null>(null);
+  const [deleteCatOpen, setDeleteCatOpen]      = useState(false);
+  const [deletingCatIds, setDeletingCatIds]    = useState<number[]>([]);
+
+  const [novaCategoria, setNovaCategoria]                = useState("");
+  const [selectedCategoriaIds, setSelectedCategoriaIds]  = useState<number[]>([]);
+  const [editingCategoriaId, setEditingCategoriaId]      = useState<number | null>(null);
+
+  const [filtrosAbertos, setFiltrosAbertos]    = useState(false);
+  const [busca, setBusca]                      = useState("");
+  const [filtroTipo, setFiltroTipo]            = useState("todos");
+  const [filtroCategoria, setFiltroCategoria]  = useState("todas");
+  const [dataInicial, setDataInicial]          = useState("");
+  const [dataFinal, setDataFinal]              = useState("");
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -172,7 +170,6 @@ const ControleFinanceiro = () => {
       setEditOpen(false);
       setEditingId(null);
       setEditComprovante(null);
-      if (editFileInputRef.current) editFileInputRef.current.value = "";
     },
   });
 
@@ -284,7 +281,6 @@ const ControleFinanceiro = () => {
     setEditData(t.data);
     setEditCategoria(t.categoria);
     setEditComprovante(null);
-    if (editFileInputRef.current) editFileInputRef.current.value = "";
     setEditOpen(true);
   };
 
@@ -332,9 +328,6 @@ const ControleFinanceiro = () => {
     await deleteCategoriaMutation.mutateAsync(deletingCatIds);
   };
 
-  const formatCurrency = (v: number) =>
-    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
   return (
     <div className="animate-fade-in py-10 px-6">
       <div className="container max-w-5xl mx-auto space-y-8">
@@ -355,41 +348,13 @@ const ControleFinanceiro = () => {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-card border border-border rounded-lg p-5 flex items-center gap-4">
-            <span className="flex-shrink-0 w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-success" />
-            </span>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Receitas</p>
-              <p className="text-xl font-bold text-success">{formatCurrency(totalEntradas)}</p>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-5 flex items-center gap-4">
-            <span className="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
-              <TrendingDown className="w-5 h-5 text-destructive" />
-            </span>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Despesas</p>
-              <p className="text-xl font-bold text-destructive">{formatCurrency(totalSaidas)}</p>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-5 flex items-center gap-4">
-            <span className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${saldo >= 0 ? "bg-primary/10" : "bg-destructive/10"}`}>
-              <Wallet className={`w-5 h-5 ${saldo >= 0 ? "text-primary" : "text-destructive"}`} />
-            </span>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Saldo Atual</p>
-              <p className={`text-xl font-bold ${saldo >= 0 ? "text-primary" : "text-destructive"}`}>{formatCurrency(saldo)}</p>
-            </div>
-          </div>
-        </div>
+        <ResumoFinanceiroCards totalEntradas={totalEntradas} totalSaidas={totalSaidas} saldo={saldo} />
 
         {/* Categorias */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-bold text-foreground mb-5">Categorias</h2>
 
-          {/* Toolbar unificada */}
+          {/* Adicionar Categoria */}
           <div className="flex items-center gap-3 mb-4">
             <Input
               placeholder={editingCategoriaId !== null ? `Editando "${categorias.find(c => c.id === editingCategoriaId)?.nome}"…` : "Nova categoria..."}
@@ -440,7 +405,7 @@ const ControleFinanceiro = () => {
             </Button>
           </div>
 
-          {/* Painel de categorias em grid simétrico */}
+          {/* Painel de categorias */}
           <div className="rounded-lg border border-border bg-muted/15 p-4 min-h-[76px]">
             {categorias.length === 0 ? (
               <div className="flex h-10 items-center justify-center text-sm text-muted-foreground">
@@ -494,7 +459,7 @@ const ControleFinanceiro = () => {
           )}
         </div>
 
-        {/* Add transaction form */}
+        {/* Formulário de Transação */}
         <div ref={filtrosRef} className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-lg font-bold text-foreground mb-4">Transações</h2>
           {isLoading ? (
@@ -515,7 +480,7 @@ const ControleFinanceiro = () => {
                 <SelectItem value="transferencia">Transferência</SelectItem>
               </SelectContent>
             </Select>
-            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+            <DateInput value={data} onChange={setData} required />
             <Select value={categoria} onValueChange={setCategoria}>
               <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
@@ -564,313 +529,97 @@ const ControleFinanceiro = () => {
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant={filtrosAbertos ? "default" : "outline"}
                 onClick={() => setFiltrosAbertos((v) => !v)}
-                className="flex-1 gap-2"
+                className="flex-1 gap-2 transition-colors"
               >
-                <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", filtrosAbertos && "rotate-180")} />
-                {filtrosAbertos ? "Desabilitar Filtros" : "Habilitar Filtros"}
+                <SlidersHorizontal className={cn("w-4 h-4 transition-transform duration-300", filtrosAbertos && "rotate-180")} />
+                {filtrosAbertos ? "Desabilitar filtros" : "Habilitar filtros"}
               </Button>
             </div>
           </form>
 
           {/* Painel de filtros */}
           {filtrosAbertos && (
-            <div className="bg-muted/20 border border-border rounded-lg p-5 space-y-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Descrição</p>
-                  <Input placeholder="Buscar por descrição..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tipo</p>
-                  <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-                    <SelectTrigger><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os tipos</SelectItem>
-                      <SelectItem value="entrada">Entrada</SelectItem>
-                      <SelectItem value="saida">Saída</SelectItem>
-                      <SelectItem value="transferencia">Transferência</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Categoria</p>
-                  <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-                    <SelectTrigger><SelectValue placeholder="Todas as categorias" /></SelectTrigger>
-                    <SelectContent className="max-h-[200px] overflow-y-auto">
-                      <SelectItem value="todas">Todas as categorias</SelectItem>
-                      {categorias.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data inicial</p>
-                  <Input type="date" value={dataInicial} onChange={(e) => setDataInicial(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data final</p>
-                  <Input type="date" value={dataFinal} onChange={(e) => setDataFinal(e.target.value)} />
-                </div>
-                <div className="flex flex-col justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={limparFiltros}
-                    disabled={!filtrosAtivos}
-                    className={cn(
-                      "w-full gap-2 transition-colors",
-                      filtrosAtivos
-                        ? "border-primary text-primary hover:bg-primary/30 hover:text-primary"
-                        : "border-primary/40 text-primary/40 cursor-not-allowed"
-                    )}
-                  >
-                    <FilterX className="w-4 h-4" />
-                    Limpar filtros
-                  </Button>
-                </div>
-              </div>
-              {filtrosAtivos && (
-                <p className="text-xs text-muted-foreground">
-                  Filtros ativos — exibindo{" "}
-                  <span className="font-semibold text-foreground">{transacoesFiltradas.length}</span>{" "}
-                  de{" "}
-                  <span className="font-semibold text-foreground">{transacoes.length}</span> transações.
-                </p>
-              )}
-            </div>
+            <FiltroTransacoes
+              busca={busca}
+              onBuscaChange={setBusca}
+              tipo={filtroTipo}
+              onTipoChange={setFiltroTipo}
+              dataInicio={dataInicial}
+              onDataInicioChange={setDataInicial}
+              dataFim={dataFinal}
+              onDataFimChange={setDataFinal}
+              categoria={filtroCategoria}
+              onCategoriaChange={setFiltroCategoria}
+              categoriaOptions={[
+                { value: "todas", label: "Todas as categorias" },
+                ...categorias.map((cat) => ({ value: cat.nome, label: cat.nome })),
+              ]}
+              filtrosAtivos={filtrosAtivos}
+              totalFiltrado={transacoesFiltradas.length}
+              totalGeral={transacoes.length}
+              onLimparFiltros={limparFiltros}
+              className="bg-muted/20 border border-border rounded-lg p-5 mb-6"
+            />
           )}
 
-          {/* Transactions table */}
-          <div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transacoesFiltradas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
-                    {filtrosAtivos ? "Nenhuma transação encontrada com os filtros aplicados." : "Nenhuma transação cadastrada."}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {transacoesFiltradas.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>{t.descricao}</TableCell>
-                  <TableCell className={t.tipo === "entrada" ? "text-success font-semibold" : "text-destructive font-semibold"}>
-                    {t.tipo === "entrada" ? "+" : "-"} {formatCurrency(t.valor)}
-                  </TableCell>
-                  <TableCell className="capitalize">
-                    {t.tipo === "saida" ? "Saída" : t.tipo === "transferencia" ? "Transferência" : "Entrada"}
-                  </TableCell>
-                  <TableCell>{new Date(t.data).toLocaleDateString("pt-BR")}</TableCell>
-                  <TableCell>{t.categoria}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {t.comprovanteUrl ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="h-8 px-2 text-xs border"
-                          onClick={() => window.open(t.comprovanteUrl ?? "", "_blank", "noopener,noreferrer")}
-                        >
-                          Ver comprovante
-                        </Button>
-                      ) : null}
-                      <Button type="button" variant="ghost" size="icon" className="group h-8 w-8 hover:bg-primary" onClick={() => handleOpenEdit(t)}>
-                        <Pencil className="w-4 h-4 text-muted-foreground transition-colors group-hover:text-white" />
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleAskDelete(t.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+          {/* Tabela de Transações */}
+          <TabelaTransacoes
+            transacoes={transacoesFiltradas}
+            showCategoria
+            showComprovante
+            showAcoes
+            onEdit={(t) => handleOpenEdit(t as Transacao)}
+            onDelete={handleAskDelete}
+            emptyMessage={filtrosAtivos ? "Nenhuma transação encontrada com os filtros aplicados." : "Nenhuma transação cadastrada."}
+          />
         </div>
       </div>
 
       <ScrollToTopButton targetRef={filtrosRef} />
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar transação</DialogTitle>
-          </DialogHeader>
+      <ModalEditarTransacao
+        open={editOpen}
+        onOpenChange={(v) => { setEditOpen(v); if (!v) setEditingId(null); }}
+        descricao={editDescricao}
+        onDescricaoChange={setEditDescricao}
+        valor={editValor}
+        onValorChange={setEditValor}
+        tipo={editTipo}
+        onTipoChange={setEditTipo}
+        data={editData}
+        onDataChange={setEditData}
+        categoria={editCategoria}
+        onCategoriaChange={setEditCategoria}
+        categorias={categorias}
+        comprovanteAtualUrl={transacoes.find((t) => t.id === editingId)?.comprovanteUrl}
+        comprovante={editComprovante}
+        onComprovanteChange={setEditComprovante}
+        isSaving={updateMutation.isPending}
+        onSalvar={() => updateMutation.mutate()}
+      />
 
-          <div className="grid grid-cols-1 gap-3">
-            <Input placeholder="Descrição" value={editDescricao} onChange={(e) => setEditDescricao(e.target.value)} />
-            <Input
-              placeholder="Valor"
-              type="number"
-              step="0.01"
-              value={editValor}
-              onChange={(e) => setEditValor(e.target.value)}
-            />
-            <Select value={editTipo} onValueChange={(v) => setEditTipo(v as Transacao["tipo"])}>
-              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="entrada">Entrada</SelectItem>
-                <SelectItem value="saida">Saída</SelectItem>
-                <SelectItem value="transferencia">Transferência</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input type="date" value={editData} onChange={(e) => setEditData(e.target.value)} />
-            <Select value={editCategoria} onValueChange={setEditCategoria}>
-              <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-              <SelectContent className="max-h-[200px] overflow-y-auto">
-                {categorias.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.nome}>{cat.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Comprovante</p>
-              {transacoes.find((t) => t.id === editingId)?.comprovanteUrl ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    const url = transacoes.find((t) => t.id === editingId)?.comprovanteUrl ?? "";
-                    if (url) window.open(url, "_blank", "noopener,noreferrer");
-                  }}
-                >
-                  Ver comprovante atual
-                </Button>
-              ) : (
-                <p className="text-xs text-muted-foreground">Nenhum comprovante anexado.</p>
-              )}
-              <input
-                ref={editFileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => setEditComprovante(e.target.files?.[0] ?? null)}
-              />
-              {editComprovante ? (
-                <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-                  <span className="flex-1 truncate text-foreground">{editComprovante.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setEditComprovante(null); if (editFileInputRef.current) editFileInputRef.current.value = ""; }}
-                    className="shrink-0 rounded-sm text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label="Remover ficheiro"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full justify-start text-muted-foreground font-normal"
-                  onClick={() => editFileInputRef.current?.click()}
-                >
-                  Escolher ficheiro
-                </Button>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Se selecionar um arquivo, ele será enviado ao salvar.
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setEditOpen(false);
-                setEditingId(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={async () => {
-                await updateMutation.mutateAsync();
-              }}
-              disabled={updateMutation.isPending}
-            >
-              Salvar alterações
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
+      <ModalConfirmacao
         open={deleteOpen}
-        onOpenChange={(v) => {
-          setDeleteOpen(v);
-          if (!v) setDeletingId(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Deseja mesmo excluir a transação?</AlertDialogTitle>
-            <AlertDialogDescription>Essa ação não pode ser desfeita.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              type="button"
-              onClick={() => {
-                if (deletingId) handleDelete(deletingId);
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={(v) => { setDeleteOpen(v); if (!v) setDeletingId(null); }}
+        title="Deseja mesmo excluir a transação?"
+        description="Essa ação não pode ser desfeita."
+        onConfirm={() => { if (deletingId) handleDelete(deletingId); }}
+      />
 
-      <AlertDialog
+      <ModalConfirmacao
         open={deleteCatOpen}
-        onOpenChange={(v) => {
-          setDeleteCatOpen(v);
-          if (!v) setDeletingCatIds([]);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Excluir {deletingCatIds.length === 1 ? "categoria" : `${deletingCatIds.length} categorias`}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {deletingCatIds.length === 1
-                ? `A categoria "${categorias.find(c => c.id === deletingCatIds[0])?.nome}" será removida permanentemente. Todas as transações vinculadas a ela também serão excluídas.`
-                : `As ${deletingCatIds.length} categorias selecionadas serão removidas permanentemente junto com todas as transações vinculadas a elas.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              type="button"
-              onClick={handleConfirmDeleteCat}
-              disabled={deleteCategoriaMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteCategoriaMutation.isPending ? "Excluindo…" : "Excluir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onOpenChange={(v) => { setDeleteCatOpen(v); if (!v) setDeletingCatIds([]); }}
+        title={deletingCatIds.length === 1 ? "Excluir categoria?" : `Excluir ${deletingCatIds.length} categorias?`}
+        description={
+          deletingCatIds.length === 1
+            ? `A categoria "${categorias.find(c => c.id === deletingCatIds[0])?.nome}" será removida permanentemente. Todas as transações vinculadas a ela também serão excluídas.`
+            : `As ${deletingCatIds.length} categorias selecionadas serão removidas permanentemente junto com todas as transações vinculadas a elas.`
+        }
+        onConfirm={handleConfirmDeleteCat}
+        isLoading={deleteCategoriaMutation.isPending}
+      />
 
     </div>
   );

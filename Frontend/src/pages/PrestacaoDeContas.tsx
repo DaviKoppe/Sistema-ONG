@@ -1,12 +1,14 @@
-import { useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useRef, useState, useMemo } from "react";
+import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import TabelaTransacoes from "@/components/TabelaTransacoes";
+import FiltroTransacoes from "@/components/FiltroTransacoes";
 import { useQuery } from "@tanstack/react-query";
 import { apiJson } from "@/lib/api";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import { cn } from "@/lib/utils";
 
 interface TransacaoPublica {
   id: string;
@@ -14,7 +16,7 @@ interface TransacaoPublica {
   valor: number;
   tipo: string;
   data: string;
-  comprovante_url: string | null;
+  comprovanteUrl: string | null;
 }
 
 interface CategoriaAgrupada {
@@ -23,25 +25,33 @@ interface CategoriaAgrupada {
   transacoes: TransacaoPublica[];
 }
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const formatTipo = (tipo: string) => {
-  if (tipo === "saída" || tipo === "saida") return "Saída";
-  if (tipo === "transferencia" || tipo === "transferência") return "Transferência";
-  return "Entrada";
-};
-
-const formatData = (dateStr: string) => {
-  const [year, month, day] = dateStr.split("-");
-  return `${day}/${month}/${year}`;
+const normalizaTipo = (tipo: string) => {
+  if (tipo === "saída" || tipo === "saida") return "saida";
+  if (tipo === "transferencia" || tipo === "transferência") return "transferencia";
+  return "entrada";
 };
 
 const PrestacaoDeContas = () => {
   const navigate = useNavigate();
-  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const itemRefs     = useRef<Map<string, HTMLDivElement>>(new Map());
   const activeItemRef = useRef<HTMLDivElement | null>(null);
   const [openValue, setOpenValue] = useState<string>("");
+
+  // Filtros
+  const [filtroAberto, setFiltroAberto] = useState(false);
+  const [busca,        setBusca]        = useState("");
+  const [tipoFiltro,   setTipoFiltro]   = useState("todos");
+  const [dataInicio,   setDataInicio]   = useState("");
+  const [dataFim,      setDataFim]      = useState("");
+
+  const temFiltroAtivo = busca !== "" || tipoFiltro !== "todos" || dataInicio !== "" || dataFim !== "";
+
+  const limparFiltros = () => {
+    setBusca("");
+    setTipoFiltro("todos");
+    setDataInicio("");
+    setDataFim("");
+  };
 
   const handleValueChange = (value: string) => {
     setOpenValue(value);
@@ -55,7 +65,7 @@ const PrestacaoDeContas = () => {
       const grouped = new Map<string, CategoriaAgrupada>();
 
       for (const t of res.results ?? []) {
-        const catId = String(t.categoria?.id ?? "sem-categoria");
+        const catId   = String(t.categoria?.id   ?? "sem-categoria");
         const catNome = t.categoria?.nome ?? "Sem categoria";
 
         if (!grouped.has(catId)) {
@@ -66,9 +76,9 @@ const PrestacaoDeContas = () => {
           id: String(t.id),
           descricao: String(t.descricao ?? ""),
           valor: Number(t.valor),
-          tipo: String(t.tipo ?? "entrada"),
+          tipo:  String(t.tipo ?? "entrada"),
           data: String(t.data),
-          comprovante_url: t.comprovante_url ?? null,
+          comprovanteUrl: t.comprovante_url ?? null,
         });
       }
 
@@ -79,25 +89,86 @@ const PrestacaoDeContas = () => {
     retry: false,
   });
 
+  const categoriasFiltradas = useMemo(() => {
+    if (!categorias) return [];
+    return categorias
+      .map((cat) => ({
+        ...cat,
+        transacoes: cat.transacoes.filter((t) => {
+          const matchBusca = !busca || t.descricao.toLowerCase().includes(busca.toLowerCase());
+          const matchTipo   = tipoFiltro === "todos" || normalizaTipo(t.tipo) === tipoFiltro;
+          const matchInicio = !dataInicio || t.data >= dataInicio;
+          const matchFim    = !dataFim    || t.data <= dataFim;
+          return matchBusca && matchTipo && matchInicio && matchFim;
+        }),
+      }))
+      .filter((cat) => cat.transacoes.length > 0);
+  }, [categorias, busca, tipoFiltro, dataInicio, dataFim]);
+
+  const totalTransacoes = categoriasFiltradas.reduce((acc, c) => acc + c.transacoes.length, 0);
+
   return (
     <div className="animate-fade-in py-10 px-6">
-      <div className="container max-w-4xl mx-auto space-y-8">
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9 text-muted-foreground">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-extrabold text-foreground">Prestação de contas</h1>
-            <p className="text-sm text-muted-foreground">Transparência das movimentações financeiras da organização.</p>
+      <div className="container max-w-4xl mx-auto space-y-6">
+
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9 text-muted-foreground">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-extrabold text-foreground">Prestação de contas</h1>
+              <p className="text-sm text-muted-foreground">Transparência das movimentações financeiras da organização.</p>
+            </div>
           </div>
+          <Button
+            type="button"
+            variant={filtroAberto ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFiltroAberto((v) => !v)}
+            className="gap-2 shrink-0 transition-colors"
+          >
+            <SlidersHorizontal
+              className={cn("w-4 h-4 transition-transform duration-300", filtroAberto && "rotate-180")}
+            />
+            {filtroAberto ? "Desabilitar filtros" : "Habilitar filtros"}
+          </Button>
         </div>
 
+        {/* Painel de filtros */}
+        {filtroAberto && (
+          <FiltroTransacoes
+            busca={busca}
+            onBuscaChange={setBusca}
+            tipo={tipoFiltro}
+            onTipoChange={setTipoFiltro}
+            dataInicio={dataInicio}
+            onDataInicioChange={setDataInicio}
+            dataFim={dataFim}
+            onDataFimChange={setDataFim}
+            filtrosAtivos={temFiltroAtivo}
+            totalFiltrado={totalTransacoes}
+            isLoading={isLoading}
+            onLimparFiltros={limparFiltros}
+            className="bg-card border border-border rounded-xl p-5 shadow-sm animate-fade-in"
+          />
+        )}
+
+        {/* Conteúdo */}
         {isLoading ? (
-          <p className="text-center text-muted-foreground">Carregando...</p>
+          <p className="text-center text-muted-foreground py-10">Carregando...</p>
         ) : isError ? (
-          <p className="text-center text-destructive">Erro ao carregar dados.</p>
-        ) : categorias?.length === 0 ? (
-          <p className="text-center text-muted-foreground">Nenhuma transação cadastrada.</p>
+          <p className="text-center text-destructive py-10">Erro ao carregar dados.</p>
+        ) : categoriasFiltradas.length === 0 ? (
+          <div className="text-center py-14 space-y-2">
+            <p className="text-muted-foreground font-medium">Nenhuma transação encontrada.</p>
+            {temFiltroAtivo && (
+              <Button type="button" variant="outline" size="sm" onClick={limparFiltros}>
+                Limpar filtros
+              </Button>
+            )}
+          </div>
         ) : (
           <Accordion
             type="single"
@@ -106,7 +177,7 @@ const PrestacaoDeContas = () => {
             onValueChange={handleValueChange}
             className="space-y-3"
           >
-            {categorias?.map((cat) => (
+            {categoriasFiltradas.map((cat) => (
               <div
                 key={cat.id}
                 ref={(el) => {
@@ -127,51 +198,7 @@ const PrestacaoDeContas = () => {
                     </span>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead>Valor</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Data</TableHead>
-                          <TableHead>Comprovante</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {cat.transacoes.map((t) => (
-                          <TableRow key={t.id}>
-                            <TableCell>{t.descricao}</TableCell>
-                            <TableCell
-                              className={
-                                t.tipo === "entrada"
-                                  ? "text-success font-semibold"
-                                  : "text-destructive font-semibold"
-                              }
-                            >
-                              {t.tipo === "entrada" ? "+" : "−"} {formatCurrency(t.valor)}
-                            </TableCell>
-                            <TableCell>{formatTipo(t.tipo)}</TableCell>
-                            <TableCell>{formatData(t.data)}</TableCell>
-                            <TableCell>
-                              {t.comprovante_url ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  className="h-8 px-2 text-xs border"
-                                  onClick={() =>
-                                    window.open(t.comprovante_url!, "_blank", "noopener,noreferrer")
-                                  }
-                                >
-                                  Ver comprovante
-                                </Button>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Sem Comprovante</span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <TabelaTransacoes transacoes={cat.transacoes} showComprovante />
                   </AccordionContent>
                 </AccordionItem>
               </div>
