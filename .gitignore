@@ -21,3 +21,5 @@ staticfiles/
 
 # Docker
 *.log
+
+db.sqlite3
