@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface DateInputProps extends Omit<React.ComponentProps<typeof Input>, "type" | "value" | "onChange" | "maxLength"> {
-  value: string;           
-  onChange: (iso: string) => void;  
+  value: string;
+  onChange: (iso: string) => void;
 }
 
 const toDisplay = (iso: string): string => {
@@ -29,28 +30,44 @@ const toIso = (display: string): string => {
 
 const DateInput = ({ value, onChange, className, ...props }: DateInputProps) => {
   const [display, setDisplay] = useState(() => toDisplay(value));
+  const [isFocused, setIsFocused] = useState(false);
+  const datePickerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDisplay(toDisplay(value));
   }, [value]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = maskDate(e.target.value);
-    setDisplay(masked);
-    onChange(toIso(masked));
+  const handleVisibleClick = () => {
+    datePickerRef.current?.focus();
+    datePickerRef.current?.showPicker?.();
+  };
+
+  const handleDatePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
   };
 
   return (
-    <Input
-      type="text"
-      inputMode="numeric"
-      placeholder="dd/mm/aaaa"
-      value={display}
-      onChange={handleChange}
-      maxLength={10}
-      className={cn(className)}
-      {...props}
-    />
+    <div className="relative">
+      <Input
+        type="text"
+        readOnly
+        placeholder="dd/mm/aaaa"
+        value={display}
+        onClick={handleVisibleClick}
+        className={cn(className, "pr-10", isFocused && "ring-2 ring-ring")}
+        {...props}
+      />
+      <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <input
+        ref={datePickerRef}
+        type="date"
+        value={value}
+        onChange={handleDatePickerChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        className="absolute inset-0 opacity-0 cursor-pointer"
+      />
+    </div>
   );
 };
 

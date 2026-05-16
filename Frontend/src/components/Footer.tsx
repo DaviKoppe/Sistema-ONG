@@ -11,10 +11,13 @@ const WhatsAppIcon = () => (
 const Footer = () => {
   return (
     <footer className="bg-primary text-primary-foreground py-8">
-      <div className="container max-w-4xl mx-auto px-6">
-        <div className="text-center space-y-3">
-          <p className="font-semibold text-sm">Nos acompanhe nas redes sociais</p>
-          <div className="flex items-center justify-center gap-3">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+          <div>
+            <p className="font-semibold text-sm">Nos acompanhe nas redes sociais</p>
+            <p className="text-xs text-primary-foreground/60">Amigos do Zé Alguém © 2026</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <a
               href="https://www.facebook.com/AmigosDoZeAlguem"
               target="_blank"
@@ -48,7 +51,6 @@ const Footer = () => {
               <Mail className="w-4 h-4" />
             </a>
           </div>
-          <p className="text-xs text-primary-foreground/60">Amigos do Zé Alguém © 2026</p>
         </div>
       </div>
     </footer>

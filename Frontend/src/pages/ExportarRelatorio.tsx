@@ -180,7 +180,7 @@ const ExportarRelatorio = () => {
             {/* Preview da tabela */}
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h2 className="text-lg font-bold text-foreground">Preview</h2>
+                <h2 className="text-lg font-bold text-foreground">Transações</h2>
                 <span className="text-sm text-muted-foreground">
                   {transacoesFiltradas.length}{" "}
                   transaç{transacoesFiltradas.length === 1 ? "ão" : "ões"}{" "}

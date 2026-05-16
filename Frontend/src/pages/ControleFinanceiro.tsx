@@ -355,54 +355,56 @@ const ControleFinanceiro = () => {
           <h2 className="text-lg font-bold text-foreground mb-5">Categorias</h2>
 
           {/* Adicionar Categoria */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:flex-wrap">
             <Input
               placeholder={editingCategoriaId !== null ? `Editando "${categorias.find(c => c.id === editingCategoriaId)?.nome}"…` : "Nova categoria..."}
               value={novaCategoria}
               onChange={(e) => setNovaCategoria(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCategoria(); } }}
-              className="w-80"
+              className="w-full sm:w-80"
             />
-            {editingCategoriaId !== null ? (
-              <>
-                <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim() || updateCategoriaMutation.isPending}>
-                  <Check className="w-3.5 h-3.5" /> Salvar
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
+              {editingCategoriaId !== null ? (
+                <>
+                  <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim() || updateCategoriaMutation.isPending}>
+                    <Check className="w-3.5 h-3.5" /> Salvar
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="border" onClick={handleCancelEdit}>
+                    Cancelar
+                  </Button>
+                </>
+              ) : (
+                <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim() || createCategoriaMutation.isPending}>
+                  <Plus className="w-3.5 h-3.5" /> Adicionar
                 </Button>
-                <Button type="button" size="sm" variant="ghost" className="border" onClick={handleCancelEdit}>
-                  Cancelar
-                </Button>
-              </>
-            ) : (
-              <Button type="button" size="sm" onClick={handleAddCategoria} disabled={!novaCategoria.trim() || createCategoriaMutation.isPending}>
-                <Plus className="w-3.5 h-3.5" /> Adicionar
-              </Button>
-            )}
-
-            <div className="h-5 w-px bg-border mx-1 shrink-0" />
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleEditSelected}
-              disabled={selectedCategoriaIds.length !== 1 || editingCategoriaId !== null}
-            >
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleAskDeleteCat(selectedCategoriaIds)}
-              disabled={selectedCategoriaIds.length === 0 || editingCategoriaId !== null}
-              className={cn(
-                selectedCategoriaIds.length > 0 && editingCategoriaId === null
-                  ? "text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
-                  : ""
               )}
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Excluir
-            </Button>
+
+              <div className="hidden sm:block h-5 w-px bg-border mx-1 shrink-0" />
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleEditSelected}
+                disabled={selectedCategoriaIds.length !== 1 || editingCategoriaId !== null}
+              >
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAskDeleteCat(selectedCategoriaIds)}
+                disabled={selectedCategoriaIds.length === 0 || editingCategoriaId !== null}
+                className={cn(
+                  selectedCategoriaIds.length > 0 && editingCategoriaId === null
+                    ? "text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                    : ""
+                )}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Excluir
+              </Button>
+            </div>
           </div>
 
           {/* Painel de categorias */}
@@ -412,7 +414,7 @@ const ControleFinanceiro = () => {
                 Nenhuma categoria cadastrada ainda.
               </div>
             ) : (
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2">
                 {categorias.map((cat) => {
                   const isSelected = selectedCategoriaIds.includes(cat.id);
                   const isBeingEdited = editingCategoriaId === cat.id;
@@ -432,7 +434,7 @@ const ControleFinanceiro = () => {
                             : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300 cursor-pointer"
                       )}
                     >
-                      <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="flex min-w-0 items-center gap-1.5">
                         <Tag className="w-3 h-3 shrink-0" />
                         <span className="truncate">{cat.nome}</span>
                       </span>
