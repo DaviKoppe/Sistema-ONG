@@ -248,7 +248,7 @@ const ControleFinanceiro = () => {
   };
 
   const totalEntradas = transacoes.filter((t) => t.tipo === "entrada").reduce((acc, t) => acc + t.valor, 0);
-  const totalSaidas = transacoes.filter((t) => t.tipo === "saida").reduce((acc, t) => acc + t.valor, 0);
+  const totalSaidas = transacoes.filter((t) => t.tipo === "saida" || t.tipo === "transferencia").reduce((acc, t) => acc + t.valor, 0);
   const saldo = totalEntradas - totalSaidas;
 
   const handleAdd = async (e: React.FormEvent) => {

@@ -78,7 +78,7 @@ const ExportarRelatorio = () => {
       .filter((t) => t.tipo === "entrada")
       .reduce((acc, t) => acc + t.valor, 0);
     const saidas = transacoesFiltradas
-      .filter((t) => t.tipo === "saida")
+      .filter((t) => t.tipo === "saida" || t.tipo === "transferencia")
       .reduce((acc, t) => acc + t.valor, 0);
     return { totalEntradas: entradas, totalSaidas: saidas, saldo: entradas - saidas };
   }, [transacoesFiltradas]);
