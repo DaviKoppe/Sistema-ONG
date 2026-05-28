@@ -37,7 +37,7 @@ const PrestacaoDeContas = () => {
   const activeItemRef = useRef<HTMLDivElement | null>(null);
   const [openValue, setOpenValue] = useState<string>("");
 
-  // Filtros
+  
   const [filtroAberto, setFiltroAberto] = useState(false);
   const [busca,        setBusca]        = useState("");
   const [tipoFiltro,   setTipoFiltro]   = useState("todos");
@@ -111,7 +111,7 @@ const PrestacaoDeContas = () => {
     <div className="animate-fade-in py-10 px-6">
       <div className="container max-w-4xl mx-auto space-y-6">
 
-        {/* Cabeçalho */}
+        {}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9 text-muted-foreground">
@@ -136,7 +136,7 @@ const PrestacaoDeContas = () => {
           </Button>
         </div>
 
-        {/* Painel de filtros */}
+        {}
         {filtroAberto && (
           <FiltroTransacoes
             busca={busca}
@@ -155,7 +155,7 @@ const PrestacaoDeContas = () => {
           />
         )}
 
-        {/* Conteúdo */}
+        {}
         {isLoading ? (
           <p className="text-center text-muted-foreground py-10">Carregando...</p>
         ) : isError ? (

@@ -94,7 +94,7 @@ const ExportarRelatorio = () => {
     setDataFinal("");
   };
 
-  // PDF fe Relatório Financeiro que pode ser filtrado ou não 
+  
   const exportarPDF = () =>
     gerarRelatorioPdf({ transacoes: transacoesFiltradas, totalEntradas, totalSaidas, saldo });
 
@@ -102,7 +102,7 @@ const ExportarRelatorio = () => {
     <div className="animate-fade-in py-10 px-6">
       <div className="container max-w-5xl mx-auto space-y-8">
 
-        {/* Cabeçalho da página */}
+        {}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button
@@ -134,7 +134,7 @@ const ExportarRelatorio = () => {
           </Button>
         </div>
 
-        {/* Estado de carregamento / erro */}
+        {}
         {isLoading && (
           <div className="bg-card border border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
             Carregando transações…
@@ -149,10 +149,10 @@ const ExportarRelatorio = () => {
         {!isLoading && !isError && (
           <>
 
-            {/* Cards de resumo */}
+            {}
             <ResumoFinanceiroCards totalEntradas={totalEntradas} totalSaidas={totalSaidas} saldo={saldo} />
 
-            {/* Filtros */}
+            {}
             <div ref={filtrosRef} className="bg-card border border-border rounded-lg p-6 space-y-4">
               <h2 className="text-lg font-bold text-foreground">Filtros</h2>
               <FiltroTransacoes
@@ -177,7 +177,7 @@ const ExportarRelatorio = () => {
               />
             </div>
 
-            {/* Preview da tabela */}
+            {}
             <div className="bg-card border border-border rounded-lg overflow-hidden">
               <div className="px-6 py-4 border-b border-border flex items-center justify-between">
                 <h2 className="text-lg font-bold text-foreground">Transações</h2>
@@ -195,7 +195,7 @@ const ExportarRelatorio = () => {
               />
             </div>
 
-            {/* Rodapé de ação */}
+            {}
             <div className="flex items-center justify-between py-2">
               <Button
                 type="button"

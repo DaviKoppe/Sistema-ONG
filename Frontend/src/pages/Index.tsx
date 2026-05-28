@@ -10,7 +10,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-//adicionar fotos ao carrosel
+
 import imgCarousel1 from "@/assets/carousel/imagem-ong-01.jpg";
 import imgCarousel2 from "@/assets/carousel/imagem-ong-02.jpg";
 import imgCarousel3 from "@/assets/carousel/imagem-ong-03.jpg";
@@ -35,10 +35,10 @@ const Index = () => {
 
   return (
     <div className="animate-fade-in">
-      {/* Hero */}
+      {}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto grid gap-12 md:grid-cols-2 items-center">
-          {/* Carrossel */}
+          {}
           <div className="px-0 sm:px-4 md:px-10">
             <Carousel className="w-full" opts={{ loop: true }}>
               <CarouselContent>
