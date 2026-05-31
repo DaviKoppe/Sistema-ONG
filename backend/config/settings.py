@@ -41,7 +41,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "1") in {"1", "true", "True", "yes", "YES"}
 _allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").strip()
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [
-    "https://*.railway.app",
+    "https://sistema-ong-backend.onrender.com",
 ]
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = True
@@ -56,12 +56,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'corsheaders',
     'core',
     'financeiro',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -145,4 +146,9 @@ STATIC_URL = 'static/'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.getenv('STATIC_ROOT', str(BASE_DIR / 'staticfiles'))
+
+CORS_ALLOWED_ORIGINS = [
+    "https://cheerful-cheesecake-1f0a95.netlify.app",
+]
+CORS_ALLOW_CREDENTIALS = True

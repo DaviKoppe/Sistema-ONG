@@ -10,6 +10,4 @@ sqlparse==0.5.5
 tzdata==2026.2
 whitenoise
 gunicorn
-# force rebuild
-asgiref==3.11.1
-...
+django-cors-headers
