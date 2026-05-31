@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? "https://sistema-ong-backend.onrender.com";
+const BASE_URL = "https://sistema-ong-backend.onrender.com";
 
 export async function apiJson<T>(
   path: string,
