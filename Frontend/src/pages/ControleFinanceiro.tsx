@@ -1,3 +1,4 @@
+const BASE_URL = import.meta.env.VITE_API_URL ?? "https://sistema-ong-backend.onrender.com";
 import { useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ const ControleFinanceiro = () => {
         fd.append("categoria", categoria || "Geral");
         fd.append("comprovante", comprovante);
 
-        const res = await fetch("/api/financeiro/transacoes/", { method: "POST", body: fd });
+        const res = await fetch(`${BASE_URL}/api/financeiro/transacoes/`, { method: "POST", body: fd });
         const text = await res.text();
         const dataJson = text ? (JSON.parse(text) as unknown) : null;
         if (!res.ok) {
@@ -150,7 +151,7 @@ const ControleFinanceiro = () => {
       fd.append("categoria", editCategoria || "Geral");
       if (editComprovante) fd.append("comprovante", editComprovante);
 
-      const res = await fetch(`/api/financeiro/transacoes/${editingId}/update/`, {
+      const res = await fetch(`${BASE_URL}/api/financeiro/transacoes/${editingId}/update/`, {
         method: "POST",
         body: fd,
       });

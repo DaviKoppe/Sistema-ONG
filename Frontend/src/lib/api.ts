@@ -25,5 +25,3 @@ export async function apiJson<T>(
 
   return data as T;
 }
-
-// cache bust
