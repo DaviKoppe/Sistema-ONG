@@ -43,6 +43,7 @@ ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [
     "https://sistema-ong-production.up.railway.app",
 ]
+CSRF_COOKIE_DOMAIN = ".railway.app"
 
 
 # Application definition
