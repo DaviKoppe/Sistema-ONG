@@ -41,7 +41,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "1") in {"1", "true", "True", "yes", "YES"}
 _allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").strip()
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 CSRF_TRUSTED_ORIGINS = [
-    "https://sistema-ong-production.up.railway.app",
+    "https://*.railway.app",
 ]
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = True

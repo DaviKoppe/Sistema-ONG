@@ -18,9 +18,14 @@ from django.contrib import admin
 from django.urls import path, include   
 from django.conf import settings 
 from django.conf.urls.static import static
+from django.http import JsonResponse
+
+def debug_csrf(request):
+    return JsonResponse({"csrf_trusted_origins": settings.CSRF_TRUSTED_ORIGINS})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('debug/', debug_csrf),
     path('financeiro/', include('financeiro.urls')),
     path('api/financeiro/', include('financeiro.api_urls')),
     path('api/auth/', include('core.api_urls')),
