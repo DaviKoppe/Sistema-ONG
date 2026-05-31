@@ -1,3 +1,4 @@
+echo "🔥 ENTRYPOINT ESTÁ SENDO EXECUTADO"
 #!/bin/sh
 
 echo "🔄 Rodando migrations..."
