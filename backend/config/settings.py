@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-load_dotenv(Path(__file__).resolve().parent.parent.parent / '.env', override=True)
+load_dotenv(Path(__file__).resolve().parent.parent / '.env', override=True)
 
 # DEBUG TEMPORÁRIO - REMOVER DEPOIS
 import sys
