@@ -1,11 +1,20 @@
-Sistema de Controle Financeiro para ONG
-Descrição
-Este projeto tem como objetivo desenvolver um sistema web para controle financeiro de uma ONG, permitindo o registro e a consulta de entradas e saídas financeiras.
-O sistema contará com controle de acesso, onde apenas o administrador poderá cadastrar transações, enquanto usuários comuns poderão apenas visualizar os registros.
+# Sistema de Controle Financeiro para ONG
 
-Tecnologias Utilizadas
-Python
-Django
-Docker para versionamento do codigo
+Sistema web desenvolvido em equipe para uma ONG local, com foco em controle financeiro e prestação de contas.
 
-Banco escolhido: PostgreSQL
+A aplicação permite o registro e a consulta de entradas e saídas financeiras, com controle de acesso entre administradores e usuários comuns.
+
+## 🛠️ Tecnologias
+
+- Python
+- Django
+- Django REST Framework
+- PostgreSQL
+- React
+- TypeScript
+- Docker
+- Git/GitHub
+
+## 🌐 Acesso
+
+[Aplicação](https://sistema-ong-frontend.onrender.com/)
